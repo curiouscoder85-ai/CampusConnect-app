@@ -201,9 +201,7 @@ service cloud.firestore {
 
       // Read rules
       allow get: if isStudentEnrolled(resource.data.userId) || isTeacherOfCourse(resource.data.courseId);
-      allow list: if isRole('admin') || 
-                   (isRole('teacher') && get(/databases/$(database)/documents/courses/$(request.query.get('where').courseId)).data.teacherId == request.auth.uid) ||
-                   (isSignedIn() && request.query.get('where').userId == request.auth.uid);
+      allow list: if isSignedIn();
 
       // Write rules
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
@@ -265,5 +263,3 @@ service cloud.firestore {
     }
   }
 }
-
-    

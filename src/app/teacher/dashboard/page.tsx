@@ -1,20 +1,46 @@
+'use client';
+
 import { DashboardStatCard } from '@/components/dashboard-stat-card';
-import { getTeacherCourses, enrollments, feedback, getUserById } from '@/lib/mock-data';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import type { Course, Enrollment } from '@/lib/types';
 import { BookCopy, Users, Star } from 'lucide-react';
 
-// Mock current teacher
-const TEACHER_ID = '2';
-
 export default function TeacherDashboardPage() {
-  const teacherCourses = getTeacherCourses(TEACHER_ID);
-  const courseIds = teacherCourses.map(c => c.id);
+  const { user, isUserLoading: userLoading } = useUser();
+  const firestore = useFirestore();
+
+  const coursesQuery = useMemoFirebase(
+    () => (user ? query(collection(firestore, 'courses'), where('teacherId', '==', user.id)) : null),
+    [firestore, user?.id]
+  );
+  const { data: teacherCourses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
+
+  const courseIds = useMemo(() => teacherCourses?.map((c) => c.id) || [], [teacherCourses]);
+
+  const enrollmentsQuery = useMemoFirebase(
+    () => (courseIds.length > 0 ? query(collection(firestore, 'enrollments'), where('courseId', 'in', courseIds)) : null),
+    [firestore, courseIds]
+  );
+  const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
   
-  const totalEnrollments = enrollments.filter(e => courseIds.includes(e.courseId)).length;
+  const feedbackQuery = useMemoFirebase(
+    () => (courseIds.length > 0 ? query(collection(firestore, 'feedback'), where('courseId', 'in', courseIds)) : null),
+    [firestore, courseIds]
+  );
+  const { data: courseFeedback, isLoading: feedbackLoading } = useCollection(feedbackQuery);
+
+
+  const totalEnrollments = enrollments?.length ?? 0;
   
-  const courseFeedback = feedback.filter(f => courseIds.includes(f.courseId));
-  const averageRating = courseFeedback.length > 0 
-    ? (courseFeedback.reduce((acc, f) => acc + f.rating, 0) / courseFeedback.length).toFixed(1) 
-    : 'N/A';
+  const averageRating =
+    courseFeedback && courseFeedback.length > 0
+      ? (
+          courseFeedback.reduce((acc, f) => acc + f.rating, 0) / courseFeedback.length
+        ).toFixed(1)
+      : 'N/A';
+
+  const isLoading = userLoading || coursesLoading || enrollmentsLoading || feedbackLoading;
 
   return (
     <div className="flex flex-col gap-8">
@@ -22,21 +48,24 @@ export default function TeacherDashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <DashboardStatCard
           title="My Courses"
-          value={String(teacherCourses.length)}
+          value={String(teacherCourses?.length ?? 0)}
           icon={BookCopy}
           description="Total courses you manage"
+          isLoading={isLoading}
         />
         <DashboardStatCard
           title="Total Students"
           value={String(totalEnrollments)}
           icon={Users}
           description="Across all your courses"
+          isLoading={isLoading}
         />
         <DashboardStatCard
           title="Average Rating"
           value={String(averageRating)}
           icon={Star}
           description="Average feedback rating from students"
+          isLoading={isLoading}
         />
       </div>
       {/* Additional components like recent activity or notifications can be added here */}
