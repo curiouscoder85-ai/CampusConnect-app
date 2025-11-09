@@ -96,7 +96,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { uid } = userCredential.user;
       
       // Determine role based on email
-      const role = email === 'admin@campus.com' ? 'admin' : 'student';
+      let role: 'admin' | 'teacher' | 'student' = 'student';
+      if (email === 'admin@campus.com') {
+        role = 'admin';
+      } else if (email === 'teacher@campus.com') {
+        role = 'teacher';
+      }
 
       const newUser: Omit<User, 'id'> = {
         name,
