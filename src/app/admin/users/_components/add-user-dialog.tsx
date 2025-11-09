@@ -30,12 +30,11 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useFirestore } from '@/firebase/provider';
-import { setDoc, doc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { getAuth } from 'firebase/auth';
-import { initializeFirebase } from '@/firebase';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { initializeFirebase, setDocumentNonBlocking, errorEmitter, FirestorePermissionError } from '@/firebase';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -71,13 +70,11 @@ export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDial
 
   const onSubmit = async (data: FormValues) => {
     try {
-      // Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(secondaryAuth, data.email, data.password);
       const { uid } = userCredential.user;
 
       const [firstName, lastName] = data.name.split(' ');
 
-      // Create user document in Firestore
       const userDocRef = doc(firestore, 'users', uid);
       const userData = {
         id: uid,
@@ -99,12 +96,21 @@ export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDial
       onOpenChange(false);
       form.reset();
     } catch (error: any) {
-      console.error('Error creating auth user:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Uh oh! Something went wrong.',
-        description: error.message || 'Could not create user authentication entry.',
-      });
+      if (error.code && error.code.startsWith('auth/')) {
+         toast({
+          variant: 'destructive',
+          title: 'Uh oh! Something went wrong.',
+          description: error.message || 'Could not create user authentication entry.',
+        });
+      } else {
+        // This is not an auth error, so we assume it's a Firestore permission error
+        const contextualError = new FirestorePermissionError({
+          path: `users/${secondaryAuth.currentUser?.uid || 'unknown'}`,
+          operation: 'create',
+          requestResourceData: data,
+        });
+        errorEmitter.emit('permission-error', contextualError);
+      }
     }
   };
 
@@ -193,3 +199,5 @@ export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDial
     </Dialog>
   );
 }
+
+    

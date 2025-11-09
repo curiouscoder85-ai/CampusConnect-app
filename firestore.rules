@@ -56,7 +56,8 @@ service cloud.firestore {
       allow list: if isRole('admin');
       allow get: if isOwner() || isRole('admin');
       allow create: if isOwner() && request.resource.data.id == userId;
-      allow update, delete: if isOwner() || isRole('admin');
+      allow update: if isOwner() || isRole('admin');
+      allow delete: if isRole('admin');
     }
 
     /**
@@ -261,3 +262,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
