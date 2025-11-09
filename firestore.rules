@@ -53,10 +53,10 @@ service cloud.firestore {
         return isSignedIn() && request.auth.uid == userId;
       }
       
-      allow list, get: if isRole('admin');
-      allow read, write: if isRole('admin');
+      allow list: if isRole('admin');
+      allow get: if isOwner() || isRole('admin');
       allow create: if isOwner() && request.resource.data.id == userId;
-      allow update, delete: if isOwner();
+      allow update, delete: if isOwner() || isRole('admin');
     }
 
     /**
