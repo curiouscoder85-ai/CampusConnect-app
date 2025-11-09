@@ -32,6 +32,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isRole(role) {
+      // It is critical that any user can read their own user document to check their role.
       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
       return userDoc.data.role == role;
     }
@@ -263,11 +264,11 @@ service cloud.firestore {
       allow delete: if isExistingOwner(userId);
     }
     
-    match /feedback/{feedbackId} {
-        allow list: if isRole('admin');
+    // This rule allows admins to perform a collection group query on 'feedback'
+    match /{path=**}/feedback/{feedbackId} {
+      allow list: if isRole('admin');
     }
   }
 }
-
 
     
