@@ -33,9 +33,9 @@ import { useFirestore } from '@/firebase/provider';
 import { setDoc, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { useAuth } from '@/components/auth-provider';
 import { getAuth } from 'firebase/auth';
 import { initializeFirebase } from '@/firebase';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -79,7 +79,7 @@ export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDial
 
       // Create user document in Firestore
       const userDocRef = doc(firestore, 'users', uid);
-      await setDoc(userDocRef, {
+      const userData = {
         id: uid,
         name: data.name,
         email: data.email,
@@ -87,7 +87,9 @@ export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDial
         firstName,
         lastName: lastName || '',
         avatar: `/avatars/0${(Math.floor(Math.random() * 5)) + 1}.png`,
-      });
+      };
+
+      setDocumentNonBlocking(userDocRef, userData, {});
 
       toast({
         title: 'User Created',
@@ -97,11 +99,11 @@ export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDial
       onOpenChange(false);
       form.reset();
     } catch (error: any) {
-      console.error('Error creating user:', error);
+      console.error('Error creating auth user:', error);
       toast({
         variant: 'destructive',
         title: 'Uh oh! Something went wrong.',
-        description: error.message || 'Could not create user.',
+        description: error.message || 'Could not create user authentication entry.',
       });
     }
   };
