@@ -219,13 +219,14 @@ service cloud.firestore {
       }
 
       // Read rules
-      allow get: if isStudentEnrolled(resource.data.studentId) || isTeacherOfCourse(resource.data.courseId);
-      allow list: if isStudentEnrolled(resource.data.studentId) || isTeacherOfCourse(resource.data.courseId);
+      allow get: if isStudentEnrolled(resource.data.userId) || isTeacherOfCourse(resource.data.courseId);
+      allow list: if request.auth != null && request.auth.uid == request.query.where.userId;
+
 
       // Write rules
       allow create: if isSignedIn();
-      allow update: if isExistingStudentEnrolled(resource.data.studentId) || isExistingTeacherOfCourse(resource.data.courseId);
-      allow delete: if isExistingStudentEnrolled(resource.data.studentId) || isExistingTeacherOfCourse(resource.data.courseId);
+      allow update: if isExistingStudentEnrolled(resource.data.userId) || isExistingTeacherOfCourse(resource.data.courseId);
+      allow delete: if isExistingStudentEnrolled(resource.data.userId) || isExistingTeacherOfCourse(resource.data.courseId);
     }
 
     /**
@@ -290,3 +291,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
