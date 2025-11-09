@@ -29,8 +29,8 @@ export type Course = {
   description: string;
   teacherId: string;
   status: 'pending' | 'approved' | 'rejected';
-  modules: Module[];
-  assignments: Assignment[];
+  modules?: Module[];
+  assignments?: Assignment[];
   image: string;
 };
 
