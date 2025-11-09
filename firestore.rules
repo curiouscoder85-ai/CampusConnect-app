@@ -83,7 +83,7 @@ service cloud.firestore {
 
       // Read rules: Public read access for approved courses, admins can list all
       allow get: if true;
-      allow list: if isRole('admin') || query.get('status') == 'approved';
+      allow list: if isSignedIn();
 
       // Write rules: Owner-only writes, validate teacherId on create
       allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid;
