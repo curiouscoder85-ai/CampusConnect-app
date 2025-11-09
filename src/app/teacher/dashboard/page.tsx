@@ -1,9 +1,10 @@
 'use client';
 
+import { useMemo } from 'react';
 import { DashboardStatCard } from '@/components/dashboard-stat-card';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import type { Course, Enrollment } from '@/lib/types';
+import type { Course, Enrollment, Feedback } from '@/lib/types';
 import { BookCopy, Users, Star } from 'lucide-react';
 
 export default function TeacherDashboardPage() {
@@ -25,10 +26,10 @@ export default function TeacherDashboardPage() {
   const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
   
   const feedbackQuery = useMemoFirebase(
-    () => (courseIds.length > 0 ? query(collection(firestore, 'feedback'), where('courseId', 'in', courseIds)) : null),
+    () => (courseIds.length > 0 ? query(collectionGroup(firestore, 'feedback'), where('courseId', 'in', courseIds)) : null),
     [firestore, courseIds]
   );
-  const { data: courseFeedback, isLoading: feedbackLoading } = useCollection(feedbackQuery);
+  const { data: courseFeedback, isLoading: feedbackLoading } = useCollection<Feedback>(feedbackQuery);
 
 
   const totalEnrollments = enrollments?.length ?? 0;
