@@ -31,7 +31,12 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isRole(role) {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return userDoc.data.role == role;
+    }
+    
+    function isSignedIn() {
+      return request.auth != null;
     }
 
     /**
@@ -44,26 +49,15 @@ service cloud.firestore {
      * @principle Enforces document ownership for writes and restricts access to a user's own data tree, with an exception for admins.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
+      function isOwner() {
         return isSignedIn() && request.auth.uid == userId;
       }
-
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource.data != null;
-      }
-
-      // Read rules
-      allow get: if isOwner(userId) || isRole('admin');
-      allow list: if isRole('admin');
-
-      // Write rules
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) || isRole('admin');
-      allow delete: if isExistingOwner(userId) || isRole('admin');
+      
+      // Admins can create/read/update/delete any user.
+      // A user can create their own document, and read/update/delete their own document.
+      allow read, write: if isRole('admin');
+      allow read, update, delete: if isOwner();
+      allow create: if isOwner() && request.resource.data.id == userId;
     }
 
     /**
@@ -77,10 +71,6 @@ service cloud.firestore {
      * @principle Enforces document ownership for writes and allows public reads.
      */
     match /courses/{courseId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
       function isOwner(teacherId) {
         return isSignedIn() && request.auth.uid == teacherId;
       }
@@ -89,11 +79,9 @@ service cloud.firestore {
         return isOwner(teacherId) && resource.data != null;
       }
 
-
       // Read rules: Public read access for approved courses, admins can list all
       allow get: if true;
       allow list: if isRole('admin') || query.get('status') == 'approved';
-
 
       // Write rules: Owner-only writes, validate teacherId on create
       allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid;
@@ -111,10 +99,6 @@ service cloud.firestore {
      * @principle Enforces document ownership for all operations within the user's data tree.
      */
     match /users/{userId}/certificates/{certificateId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
       function isOwner(userId) {
         return isSignedIn() && request.auth.uid == userId;
       }
@@ -143,10 +127,6 @@ service cloud.firestore {
      * @principle Enforces document ownership for writes and allows public reads.
      */
     match /courses/{courseId}/assignments/{assignmentId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
       function isTeacherOwner(courseId) {
           return isSignedIn() && get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId == request.auth.uid;
       }
@@ -174,10 +154,6 @@ service cloud.firestore {
      * @principle Allows students to create feedback, public reads, and teacher-only management.
      */
     match /courses/{courseId}/feedback/{feedbackId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
       function isTeacherOwner(courseId) {
           return isSignedIn() && get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId == request.auth.uid;
       }
@@ -206,10 +182,6 @@ service cloud.firestore {
      * @principle Grants access to enrolled student or course teacher.
      */
     match /enrollments/{enrollmentId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
       function isStudentEnrolled(studentId) {
           return isSignedIn() && request.auth.uid == studentId;
       }
@@ -228,7 +200,7 @@ service cloud.firestore {
 
       // Read rules
       allow get: if isStudentEnrolled(resource.data.userId) || isTeacherOfCourse(resource.data.courseId);
-      allow list: if isSignedIn() && request.query.get("userId") == request.auth.uid;
+      allow list: if isSignedIn() && request.query.where.userId == request.auth.uid;
 
       // Write rules
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
@@ -247,10 +219,6 @@ service cloud.firestore {
      * @principle Enforces student ownership for submissions, with teacher read access.
      */
     match /courses/{courseId}/assignments/{assignmentId}/submissions/{submissionId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
       function isTeacherOfCourse(courseId) {
         return isSignedIn() && get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId == request.auth.uid;
       }
@@ -275,10 +243,6 @@ service cloud.firestore {
      * @principle Enforces document ownership for all operations within the user's data tree.
      */
     match /users/{userId}/recommendations/{recommendationId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
       function isOwner(userId) {
         return isSignedIn() && request.auth.uid == userId;
       }
