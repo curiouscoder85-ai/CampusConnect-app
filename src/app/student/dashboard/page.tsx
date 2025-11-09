@@ -34,7 +34,7 @@ export default function StudentDashboardPage() {
 
   const enrollmentsQuery = useMemoFirebase(
     () => (user ? query(collection(firestore, 'enrollments'), where('userId', '==', user.id)) : null),
-    [firestore, user]
+    [firestore, user?.id]
   );
   const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
