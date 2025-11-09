@@ -48,9 +48,9 @@ export default function SignupPage() {
     },
   });
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      const user = signup(values.name, values.email, values.password);
+      const user = await signup(values.name, values.email, values.password);
       if (user) {
         toast({
           title: 'Account Created',

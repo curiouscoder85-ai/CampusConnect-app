@@ -1,7 +1,6 @@
 'use client';
 
 import { DashboardStatCard } from '@/components/dashboard-stat-card';
-import { users, courses } from '@/lib/mock-data';
 import { Users, BookOpen, Clock } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import {
@@ -14,17 +13,33 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { useCollection } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import { useMemo } from 'react';
 
 export default function AdminDashboardPage() {
-  const totalUsers = users.length;
-  const totalCourses = courses.length;
-  const pendingCourses = courses.filter((c) => c.status === 'pending').length;
+  const firestore = useFirestore();
+
+  const usersQuery = useMemo(() => collection(firestore, 'users'), [firestore]);
+  const coursesQuery = useMemo(() => collection(firestore, 'courses'), [firestore]);
+  const pendingCoursesQuery = useMemo(() => query(collection(firestore, 'courses'), where('status', '==', 'pending')), [firestore]);
+
+  const { data: users, isLoading: usersLoading } = useCollection(usersQuery);
+  const { data: courses, isLoading: coursesLoading } = useCollection(coursesQuery);
+  const { data: pendingCourses, isLoading: pendingCoursesLoading } = useCollection(pendingCoursesQuery);
+
+
+  const totalUsers = users?.length ?? 0;
+  const totalCourses = courses?.length ?? 0;
+  const pendingCoursesCount = pendingCourses?.length ?? 0;
 
   const chartData = [
-    { name: 'Students', count: users.filter(u => u.role === 'student').length, fill: 'hsl(var(--chart-1))' },
-    { name: 'Teachers', count: users.filter(u => u.role === 'teacher').length, fill: 'hsl(var(--chart-2))' },
-    { name: 'Admins', count: users.filter(u => u.role === 'admin').length, fill: 'hsl(var(--chart-4))' },
+    { name: 'Students', count: users?.filter(u => u.role === 'student').length ?? 0, fill: 'hsl(var(--chart-1))' },
+    { name: 'Teachers', count: users?.filter(u => u.role === 'teacher').length ?? 0, fill: 'hsl(var(--chart-2))' },
+    { name: 'Admins', count: users?.filter(u => u.role === 'admin').length ?? 0, fill: 'hsl(var(--chart-4))' },
   ];
+  const loading = usersLoading || coursesLoading || pendingCoursesLoading;
 
   return (
     <div className="flex flex-col gap-8">
@@ -35,18 +50,21 @@ export default function AdminDashboardPage() {
           value={String(totalUsers)}
           icon={Users}
           description="All user accounts on the platform"
+          isLoading={loading}
         />
         <DashboardStatCard
           title="Total Courses"
           value={String(totalCourses)}
           icon={BookOpen}
           description="All courses created on the platform"
+          isLoading={loading}
         />
         <DashboardStatCard
           title="Pending Approvals"
-          value={String(pendingCourses)}
+          value={String(pendingCoursesCount)}
           icon={Clock}
           description="Courses awaiting admin review"
+          isLoading={loading}
         />
       </div>
 
@@ -56,19 +74,21 @@ export default function AdminDashboardPage() {
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--background))',
-                  borderColor: 'hsl(var(--border))',
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: '14px' }} />
-              <Bar dataKey="count" name="Number of Users" radius={[4, 4, 0, 0]} />
-            </BarChart>
+            {loading ? <div className="h-full w-full flex items-center justify-center">Loading...</div> : (
+              <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--background))',
+                    borderColor: 'hsl(var(--border))',
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: '14px' }} />
+                <Bar dataKey="count" name="Number of Users" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            )}
           </ResponsiveContainer>
         </CardContent>
       </Card>

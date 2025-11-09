@@ -58,3 +58,6 @@ export type Feedback = {
   comment: string;
   createdAt: Date;
 };
+
+// Add Omit type helper if it's not available globally
+type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;

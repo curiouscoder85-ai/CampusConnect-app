@@ -1,5 +1,6 @@
 import type { User, Course, Enrollment, Feedback, Submission } from './types';
 
+// This data is now for reference and will be replaced by Firestore data.
 export const users: User[] = [
   { id: '1', name: 'Admin User', email: 'admin@campus.com', role: 'admin', avatar: '/avatars/01.png' },
   { id: '2', name: 'Karthik S', email: 'karthik@campus.com', role: 'teacher', avatar: '/avatars/02.png' },
@@ -72,6 +73,9 @@ export const feedback: Feedback[] = [
   { id: 'f2', userId: '4', courseId: '1', rating: 4, comment: 'Great content, but could use more practical examples.', createdAt: new Date() },
   { id: 'f3', userId: '3', courseId: '2', rating: 3, comment: 'The material is quite difficult to understand.', createdAt: new Date() },
 ];
+
+// Note: These functions are now deprecated in favor of direct Firestore queries.
+// They are kept for reference or if parts of the app still use them.
 
 export const getCourseById = (id: string) => courses.find(c => c.id === id);
 export const getUserById = (id: string) => users.find(u => u.id === id);

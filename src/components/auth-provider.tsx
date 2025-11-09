@@ -1,81 +1,118 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from 'react';
 import { useRouter } from 'next/navigation';
-import { User, users as mockUsers } from '@/lib/mock-data';
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  User as FirebaseUser,
+} from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { useFirebase } from '@/firebase/provider';
+import type { User } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, pass: string) => User;
+  login: (email: string, pass: string) => Promise<User | null>;
   logout: () => void;
-  signup: (name: string, email: string, pass: string) => User;
+  signup: (name: string, email: string, pass: string) => Promise<User | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { firestore, auth } = useFirebase();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
-    // Simulate checking for a logged-in user in localStorage
-    try {
-      const storedUser = localStorage.getItem('campus-connect-user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+    if (!auth) return;
+
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const userDocRef = doc(firestore, 'users', firebaseUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          setUser({ id: userDoc.id, ...userDoc.data() } as User);
+        } else {
+          // Handle case where user exists in Auth but not in Firestore
+          setUser(null);
+        }
+      } else {
+        setUser(null);
       }
-    } catch (error) {
-      console.error("Could not parse user from localStorage", error)
-      localStorage.removeItem('campus-connect-user');
-    } finally {
       setLoading(false);
-    }
-  }, []);
+    });
 
-  const login = (email: string, pass: string): User => {
-    // This is a mock login function. In a real app, you'd call Firebase Auth.
-    const foundUser = mockUsers.find(u => u.email === email);
-    if (!foundUser) {
-      throw new Error('User not found.');
-    }
-    // Mock password check
-    if (pass !== 'password123') {
-        throw new Error('Invalid password.');
-    }
+    return () => unsubscribe();
+  }, [auth, firestore]);
 
-    localStorage.setItem('campus-connect-user', JSON.stringify(foundUser));
-    setUser(foundUser);
-    return foundUser;
+  const login = async (email: string, pass: string): Promise<User | null> => {
+    if (!auth) return null;
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+      const userDocRef = doc(firestore, 'users', userCredential.user.uid);
+      const userDoc = await getDoc(userDocRef);
+      if (userDoc.exists()) {
+        const userData = { id: userDoc.id, ...userDoc.data() } as User;
+        setUser(userData);
+        return userData;
+      }
+      return null;
+    } catch (error: any) {
+      console.error("Login failed:", error);
+      throw error;
+    }
   };
 
-  const logout = () => {
-    // In a real app, call Firebase signOut
-    localStorage.removeItem('campus-connect-user');
+  const logout = async () => {
+    if (!auth) return;
+    await signOut(auth);
     setUser(null);
     router.push('/');
   };
 
-  const signup = (name: string, email: string, pass: string): User => {
-    const existingUser = mockUsers.find(u => u.email === email);
-    if (existingUser) {
-      throw new Error('An account with this email already exists.');
-    }
-    const newUser: User = {
-      id: String(mockUsers.length + 1),
-      name,
-      email,
-      role: 'student', // Default role
-      avatar: `/avatars/0${(mockUsers.length % 5) + 1}.png`,
-    };
-    // In a real app, you would add this user to Firestore
-    mockUsers.push(newUser);
-    localStorage.setItem('campus-connect-user', JSON.stringify(newUser));
-    setUser(newUser);
-    return newUser;
-  };
+  const signup = async (name: string, email: string, pass: string): Promise<User | null> => {
+    if (!auth) return null;
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        pass
+      );
+      const { uid } = userCredential.user;
+      const newUser: Omit<User, 'id'> = {
+        name,
+        email,
+        role: 'student', // Default role
+        avatar: `/avatars/0${(Math.floor(Math.random() * 5)) + 1}.png`,
+      };
 
+      const userDocRef = doc(firestore, 'users', uid);
+      await setDoc(userDocRef, newUser);
+      
+      const createdUser = { id: uid, ...newUser } as User;
+      setUser(createdUser);
+      return createdUser;
+
+    } catch (error: any) {
+       console.error("Signup failed:", error);
+       throw error;
+    }
+  };
 
   const value = { user, loading, login, logout, signup };
 

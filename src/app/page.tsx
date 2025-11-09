@@ -49,9 +49,9 @@ export default function LoginPage() {
     },
   });
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      const user = login(values.email, values.password);
+      const user = await login(values.email, values.password);
       if (user) {
         toast({
           title: 'Login Successful',
@@ -60,6 +60,8 @@ export default function LoginPage() {
         if (user.role === 'admin') router.push('/admin/dashboard');
         else if (user.role === 'teacher') router.push('/teacher/dashboard');
         else router.push('/student/dashboard');
+      } else {
+        throw new Error("Login failed. Please check your credentials.")
       }
     } catch (error: any) {
       toast({

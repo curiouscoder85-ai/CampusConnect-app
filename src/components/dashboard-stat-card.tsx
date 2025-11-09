@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from './ui/skeleton';
 import type { LucideIcon } from 'lucide-react';
 
 interface DashboardStatCardProps {
@@ -6,9 +7,10 @@ interface DashboardStatCardProps {
   value: string;
   description?: string;
   icon: LucideIcon;
+  isLoading?: boolean;
 }
 
-export function DashboardStatCard({ title, value, description, icon: Icon }: DashboardStatCardProps) {
+export function DashboardStatCard({ title, value, description, icon: Icon, isLoading }: DashboardStatCardProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -16,7 +18,11 @@ export function DashboardStatCard({ title, value, description, icon: Icon }: Das
         <Icon className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+        {isLoading ? (
+            <Skeleton className="h-8 w-1/4" />
+        ) : (
+            <div className="text-2xl font-bold">{value}</div>
+        )}
         {description && (
           <p className="text-xs text-muted-foreground">{description}</p>
         )}
