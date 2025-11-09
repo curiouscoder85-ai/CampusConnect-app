@@ -90,9 +90,9 @@ service cloud.firestore {
       }
 
 
-      // Read rules: Public read access for approved courses
+      // Read rules: Public read access for approved courses, admins can list all
       allow get: if true;
-      allow list: if query.get('status') == 'approved';
+      allow list: if isRole('admin') || query.get('status') == 'approved';
 
 
       // Write rules: Owner-only writes, validate teacherId on create
