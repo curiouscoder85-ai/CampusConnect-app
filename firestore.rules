@@ -223,7 +223,7 @@ service cloud.firestore {
 
       // Read rules
       allow get: if isStudentEnrolled(resource.data.userId) || isTeacherOfCourse(resource.data.courseId);
-      allow list: if isSignedIn() && request.query.where.userId == request.auth.uid;
+      allow list: if isSignedIn() && request.query.get("userId") == request.auth.uid;
 
       // Write rules
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
