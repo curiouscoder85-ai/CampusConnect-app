@@ -32,11 +32,11 @@ export default function StudentDashboardPage() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userData, isLoading: userLoading } = useDoc<User>(userDocRef);
 
-  const enrollmentsQuery = useMemoFirebase(() => 
-    user ? query(collection(firestore, 'enrollments'), where('userId', '==', user.uid)) : null, 
+  const enrollmentsQuery = useMemoFirebase(
+    () => (user ? query(collection(firestore, 'enrollments'), where('userId', '==', user.uid)) : null),
     [firestore, user]
   );
   const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);

@@ -194,8 +194,9 @@ service cloud.firestore {
      * @description Controls access to enrollment records. Only the enrolled student or the course teacher can access.
      * @path /enrollments/{enrollmentId}
      * @allow (create) - Any authenticated user can create an enrollment.
-     * @allow (get, list) - The enrolled student (studentId) or the teacher of the course (teacherId) can get/list the enrollment.
-     * @allow (update, delete) - The enrolled student (studentId) or the teacher of the course (teacherId) can update/delete the enrollment.
+     * @allow (get) - The enrolled student (userId) or the teacher of the course (teacherId) can get the enrollment.
+     * @allow (list) - A student can list their own enrollments.
+     * @allow (update, delete) - The enrolled student (userId) or the teacher of the course (teacherId) can update/delete the enrollment.
      * @deny (get, list, update, delete) - Any other user cannot access the enrollment.
      * @principle Grants access to enrolled student or course teacher.
      */
@@ -222,12 +223,11 @@ service cloud.firestore {
 
       // Read rules
       allow get: if isStudentEnrolled(resource.data.userId) || isTeacherOfCourse(resource.data.courseId);
-      allow list: if request.auth != null && request.auth.uid == request.query.get('where')[0][2];
-
+      allow list: if isSignedIn() && request.query.where.userId == request.auth.uid;
 
       // Write rules
-      allow create: if isSignedIn();
-      allow update: if isExistingStudentEnrolled(resource.data.userId) || isExistingTeacherOfCourse(resource.data.courseId);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if (isExistingStudentEnrolled(resource.data.userId) || isExistingTeacherOfCourse(resource.data.courseId)) && request.resource.data.userId == resource.data.userId;
       allow delete: if isExistingStudentEnrolled(resource.data.userId) || isExistingTeacherOfCourse(resource.data.courseId);
     }
 
