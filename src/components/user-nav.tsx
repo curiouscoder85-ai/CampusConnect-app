@@ -15,10 +15,12 @@ import {
 import { useAuth } from './auth-provider';
 import { LogOut, User as UserIcon, Settings } from 'lucide-react';
 import { EditUserDialog } from '@/app/admin/users/_components/edit-user-dialog';
+import { SettingsDialog } from './settings-dialog';
 
 export function UserNav() {
   const { user, logout } = useAuth();
-  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = React.useState(false);
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = React.useState(false);
 
   if (!user) {
     return null;
@@ -31,6 +33,15 @@ export function UserNav() {
       return `${names[0][0]}${names[1][0]}`;
     }
     return name.substring(0, 2);
+  };
+
+  const handleSettingsSelect = () => {
+    if (user.role === 'admin') {
+      setIsSettingsDialogOpen(true);
+    } else {
+      // For non-admins, settings might just open their profile
+      setIsProfileDialogOpen(true);
+    }
   };
 
   return (
@@ -55,11 +66,11 @@ export function UserNav() {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
-            <DropdownMenuItem onSelect={() => setIsEditDialogOpen(true)}>
+            <DropdownMenuItem onSelect={() => setIsProfileDialogOpen(true)}>
               <UserIcon className="mr-2 h-4 w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setIsEditDialogOpen(true)}>
+            <DropdownMenuItem onSelect={handleSettingsSelect}>
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
             </DropdownMenuItem>
@@ -71,11 +82,28 @@ export function UserNav() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      
+      {/* Dialogs for Admin */}
       {user.role === 'admin' && (
+        <>
+          <EditUserDialog
+            user={user}
+            isOpen={isProfileDialogOpen}
+            onOpenChange={setIsProfileDialogOpen}
+          />
+          <SettingsDialog
+            isOpen={isSettingsDialogOpen}
+            onOpenChange={setIsSettingsDialogOpen}
+          />
+        </>
+      )}
+
+      {/* Profile Dialog for other roles (if needed) */}
+      {user.role !== 'admin' && (
         <EditUserDialog
-          user={user}
-          isOpen={isEditDialogOpen}
-          onOpenChange={setIsEditDialogOpen}
+            user={user}
+            isOpen={isProfileDialogOpen}
+            onOpenChange={setIsProfileDialogOpen}
         />
       )}
     </>
