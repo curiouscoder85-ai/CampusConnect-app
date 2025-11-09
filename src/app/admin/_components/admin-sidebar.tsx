@@ -34,7 +34,7 @@ export function AdminSidebar() {
             <SidebarMenuItem key={href}>
               <SidebarMenuButton
                 asChild
-                isActive={pathname === href}
+                isActive={pathname.startsWith(href)}
                 tooltip={{ children: label }}
               >
                 <Link href={href}>
