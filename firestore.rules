@@ -55,7 +55,7 @@ service cloud.firestore {
       
       allow list: if isRole('admin');
       allow get: if isOwner() || isRole('admin');
-      allow create: if isOwner() && request.resource.data.id == userId;
+      allow create: if isOwner() && request.resource.data.id == userId || isRole('admin');
       allow update: if isOwner() || isRole('admin');
       allow delete: if isRole('admin');
     }
@@ -176,7 +176,7 @@ service cloud.firestore {
      * @path /enrollments/{enrollmentId}
      * @allow (create) - Any authenticated user can create an enrollment.
      * @allow (get) - The enrolled student (userId) or the teacher of the course (teacherId) can get the enrollment.
-     * @allow (list) - A student can list their own enrollments.
+     * @allow (list) - A student can list their own enrollments. Admins can list all. Teachers can list enrollments for their courses.
      * @allow (update, delete) - The enrolled student (userId) or the teacher of the course (teacherId) can update/delete the enrollment.
      * @deny (get, list, update, delete) - Any other user cannot access the enrollment.
      * @principle Grants access to enrolled student or course teacher.
@@ -200,7 +200,10 @@ service cloud.firestore {
 
       // Read rules
       allow get: if isStudentEnrolled(resource.data.userId) || isTeacherOfCourse(resource.data.courseId);
-      allow list: if isSignedIn() && request.query.where.userId == request.auth.uid;
+      allow list: if isRole('admin') || 
+                   (isRole('teacher') && get(/databases/$(database)/documents/courses/$(request.query.where.courseId)).data.teacherId == request.auth.uid) ||
+                   (isSignedIn() && request.query.where.userId == request.auth.uid);
+
 
       // Write rules
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
