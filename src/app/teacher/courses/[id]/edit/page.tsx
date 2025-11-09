@@ -10,14 +10,19 @@ import { ModuleEditor } from '../../_components/module-editor';
 
 export default function EditCoursePage({ params }: { params: { id: string } }) {
   const firestore = useFirestore();
-  const courseRef = useMemoFirebase(() => doc(firestore, 'courses', params.id), [firestore, params.id]);
+  const { id } = params;
+  const courseRef = useMemoFirebase(() => doc(firestore, 'courses', id), [firestore, id]);
   const { data: course, isLoading } = useDoc<Course>(courseRef);
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-2xl space-y-8">
-        <Skeleton className="h-64 w-full" />
-        <Skeleton className="h-48 w-full" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="lg:col-span-2 space-y-8">
+            <Skeleton className="h-96 w-full" />
+        </div>
+        <div className="space-y-8">
+            <Skeleton className="h-64 w-full" />
+        </div>
       </div>
     );
   }
