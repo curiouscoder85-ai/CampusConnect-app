@@ -149,7 +149,7 @@ service cloud.firestore {
      * @description Controls access to feedback for each course. Only the teacher who created the course can manage feedback, and students can create feedback.
      * @path /courses/{courseId}/feedback/{feedbackId}
      * @allow (create) - Student with UID 'student_xyz' can create feedback under /courses/course_123.
-     * @allow (get, list) - Any signed-in user can read/list feedback under /courses/course_123. Admins can list all feedback via collection group query.
+     * @allow (get, list) - Any signed-in user can read/list feedback under /courses/course_123.
      * @allow (update, delete) - Teacher with UID 'teacher_abc' can update/delete feedback under /courses/course_123.
      * @deny (update, delete) - User with UID 'student_xyz' cannot update/delete feedback created by other students or managed by the teacher under /courses/course_123.
      * @principle Allows students to create feedback, public reads, and teacher-only management.
@@ -165,7 +165,7 @@ service cloud.firestore {
 
       // Read rules
       allow get: if true;
-      allow list: if isRole('admin') || true;
+      allow list: if true;
 
       // Write rules
       allow create: if isSignedIn(); // Any signed-in user (student) can create feedback
@@ -262,5 +262,12 @@ service cloud.firestore {
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
+    
+    match /feedback/{feedbackId} {
+        allow list: if isRole('admin');
+    }
   }
 }
+
+
+    
