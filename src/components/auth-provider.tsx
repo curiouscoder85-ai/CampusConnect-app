@@ -16,7 +16,7 @@ import {
   signOut,
   User as FirebaseUser,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import type { User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -94,14 +94,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         pass
       );
       const { uid } = userCredential.user;
+      
+      // Determine role based on email
+      const role = email === 'admin@campus.com' ? 'admin' : 'student';
+
       const newUser: Omit<User, 'id'> = {
         name,
         email,
-        role: 'student', // Default role
+        role,
         avatar: `/avatars/0${(Math.floor(Math.random() * 5)) + 1}.png`,
       };
 
       const userDocRef = doc(firestore, 'users', uid);
+      // We are not using non-blocking updates here because we need to be sure the user document is created before navigating.
       await setDoc(userDocRef, newUser);
       
       const createdUser = { id: uid, ...newUser } as User;
