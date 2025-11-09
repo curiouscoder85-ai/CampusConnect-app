@@ -1,3 +1,40 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "course-1",
+      "description": "A placeholder image for a web development course.",
+      "imageUrl": "https://images.unsplash.com/photo-1635775017492-1eb935a082a4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxjb2RlJTIwdGVjaG5vbG9neXxlbnwwfHx8fDE3NjI2ODkwNjZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "code technology"
+    },
+    {
+      "id": "course-2",
+      "description": "A placeholder image for a data science course.",
+      "imageUrl": "https://images.unsplash.com/photo-1748609160056-7b95f30041f0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxkYXRhJTIwY2hhcnRzfGVufDB8fHx8MTc2MjYyMzU3MXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "data charts"
+    },
+    {
+      "id": "course-3",
+      "description": "A placeholder image for a design course.",
+      "imageUrl": "https://images.unsplash.com/photo-1665625771509-072025eb2d47?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxkZXNpZ24lMjBwYWxldHRlfGVufDB8fHx8MTc2MjY2MDk5Mnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "design palette"
+    },
+    {
+      "id": "course-4",
+      "description": "A placeholder image for a marketing course.",
+      "imageUrl": "https://images.unsplash.com/photo-1707301280408-8a9158f7613d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxtYXJrZXRpbmclMjBidXNpbmVzc3xlbnwwfHx8fDE3NjI3MDQzNDV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "marketing business"
+    },
+    {
+      "id": "course-5",
+      "description": "A placeholder image for a project management course.",
+      "imageUrl": "https://images.unsplash.com/photo-1709715357510-b687304cee3a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHx0ZWFtJTIwbWVldGluZ3xlbnwwfHx8fDE3NjI2OTYyODd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "team meeting"
+    },
+    {
+      "id": "course-6",
+      "description": "A placeholder image for a language course.",
+      "imageUrl": "https://images.unsplash.com/photo-1728734704163-3d13e0c86f5a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxib29rcyUyMGxpYnJhcnl8ZW58MHx8fHwxNzYyNjgxMTcxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "books library"
+    }
+  ]
 }

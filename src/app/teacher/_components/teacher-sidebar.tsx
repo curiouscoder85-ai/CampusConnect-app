@@ -1,0 +1,51 @@
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+} from '@/components/ui/sidebar';
+import Logo from '@/components/logo';
+import { LayoutDashboard, BookCopy, MessageSquare, GraduationCap } from 'lucide-react';
+
+const menuItems = [
+  { href: '/teacher/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/teacher/courses', label: 'My Courses', icon: BookCopy },
+  { href: '/teacher/performance', label: 'Student Performance', icon: GraduationCap },
+  { href: '/teacher/feedback', label: 'Feedback', icon: MessageSquare },
+];
+
+export function TeacherSidebar() {
+  const pathname = usePathname();
+
+  return (
+    <Sidebar>
+      <SidebarHeader>
+        <Logo />
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarMenu>
+          {menuItems.map(({ href, label, icon: Icon }) => (
+            <SidebarMenuItem key={href}>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname.startsWith(href)}
+                tooltip={{ children: label }}
+              >
+                <Link href={href}>
+                  <Icon />
+                  <span>{label}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarContent>
+    </Sidebar>
+  );
+}

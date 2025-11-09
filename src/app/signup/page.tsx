@@ -29,18 +29,20 @@ import { useAuth } from '@/components/auth-provider';
 import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
+  name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   email: z.string().email({ message: 'Invalid email address.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
 });
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { signup } = useAuth();
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      name: '',
       email: '',
       password: '',
     },
@@ -48,20 +50,19 @@ export default function LoginPage() {
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     try {
-      const user = login(values.email, values.password);
+      const user = signup(values.name, values.email, values.password);
       if (user) {
         toast({
-          title: 'Login Successful',
-          description: `Welcome back, ${user.name}!`,
+          title: 'Account Created',
+          description: "We've created your account for you.",
         });
-        if (user.role === 'admin') router.push('/admin/dashboard');
-        else if (user.role === 'teacher') router.push('/teacher/dashboard');
-        else router.push('/student/dashboard');
+        // New users are always students by default
+        router.push('/student/dashboard');
       }
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Login Failed',
+        title: 'Signup Failed',
         description: error.message,
       });
     }
@@ -74,12 +75,25 @@ export default function LoginPage() {
           <div className="mx-auto mb-4">
             <Logo />
           </div>
-          <CardTitle className="font-headline text-2xl">Welcome Back</CardTitle>
-          <CardDescription>Enter your credentials to access your account.</CardDescription>
+          <CardTitle className="font-headline text-2xl">Create an Account</CardTitle>
+          <CardDescription>Join CampusConnect to start your learning journey.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="John Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="email"
@@ -107,16 +121,16 @@ export default function LoginPage() {
                 )}
               />
               <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Signing In...' : 'Sign In'}
+                {form.formState.isSubmitting ? 'Creating Account...' : 'Create Account'}
               </Button>
             </form>
           </Form>
         </CardContent>
         <CardFooter className="flex justify-center">
           <p className="text-sm text-muted-foreground">
-            Don't have an account?{' '}
+            Already have an account?{' '}
             <Button variant="link" asChild className="p-0">
-              <Link href="/signup">Sign up</Link>
+              <Link href="/">Sign in</Link>
             </Button>
           </p>
         </CardFooter>
