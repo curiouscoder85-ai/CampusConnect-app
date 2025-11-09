@@ -3,7 +3,7 @@
  * @description This ruleset enforces a strict user-ownership model for personal data and teacher-ownership for course-related data.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profiles. Only the user can read/write their own profile.
+ * - /users/{userId}: Stores user profiles. Only the user can read/write their own profile. Admins can read all profiles.
  * - /courses/{courseId}: Stores course information. Only the teacher who created the course can modify it.
  * - /users/{userId}/certificates/{certificateId}: Stores certificates earned by users. Only the user can access their own certificates.
  * - /courses/{courseId}/assignments/{assignmentId}: Stores assignments for each course. Only the teacher who created the course can modify assignments.
@@ -13,7 +13,7 @@
  * - /users/{userId}/recommendations/{recommendationId}: Stores AI-powered content recommendations for each student. Only the user can access their own recommendations.
  *
  * Key Security Decisions:
- * - User listing is disallowed.
+ * - User listing is disallowed for non-admins.
  * - Data shapes are not strictly enforced, focusing on authorization.
  * - Ownership is enforced using path-based matching and denormalized fields like 'teacherId'.
  * - Ambiguous relationships default to strict owner-only access.
@@ -30,13 +30,18 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isRole(role) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+
     /**
-     * @description Controls access to user profiles. Only the user can read and write their own profile.
+     * @description Controls access to user profiles. Only the user can read and write their own profile. Admins can read all profiles.
      * @path /users/{userId}
      * @allow (create) - User with UID 'user_abc' can create their profile at /users/user_abc.
      * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete their profile at /users/user_abc.
+     * @allow (get, list) - An admin can read or list all user profiles.
      * @deny (create, update, delete) - User with UID 'user_xyz' cannot create, update, or delete the profile at /users/user_abc.
-     * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
+     * @principle Enforces document ownership for writes and restricts access to a user's own data tree, with an exception for admins.
      */
     match /users/{userId} {
       function isSignedIn() {
@@ -52,13 +57,13 @@ service cloud.firestore {
       }
 
       // Read rules
-      allow get: if isOwner(userId);
-      allow list: if false; // User listing is not permitted.
+      allow get: if isOwner(userId) || isRole('admin');
+      allow list: if isRole('admin');
 
       // Write rules
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
+      allow update: if isExistingOwner(userId) || isRole('admin');
+      allow delete: if isExistingOwner(userId) || isRole('admin');
     }
 
     /**
@@ -92,8 +97,8 @@ service cloud.firestore {
 
       // Write rules: Owner-only writes, validate teacherId on create
       allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid;
-      allow update: if isExistingOwner(resource.data.teacherId);
-      allow delete: if isExistingOwner(resource.data.teacherId);
+      allow update: if isExistingOwner(resource.data.teacherId) || isRole('admin');
+      allow delete: if isExistingOwner(resource.data.teacherId) || isRole('admin');
     }
 
     /**
