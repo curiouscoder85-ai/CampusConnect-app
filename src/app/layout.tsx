@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
 import { ThemeProvider } from '@/components/theme-provider';
 import './globals.css';
+import { AppProvider } from '@/components/app-provider';
 
 export const metadata: Metadata = {
   title: 'CampusConnect',
@@ -29,12 +30,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <FirebaseClientProvider>
-            <AuthProvider>
-              {children}
-              <Toaster />
-            </AuthProvider>
-          </FirebaseClientProvider>
+          <AppProvider>
+            <FirebaseClientProvider>
+              <AuthProvider>
+                {children}
+                <Toaster />
+              </AuthProvider>
+            </FirebaseClientProvider>
+          </AppProvider>
         </ThemeProvider>
       </body>
     </html>

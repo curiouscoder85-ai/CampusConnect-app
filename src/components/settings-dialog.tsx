@@ -15,6 +15,8 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { firebaseConfig } from '@/firebase/config';
 import packageJson from '@/../package.json';
+import { useApp } from '@/components/app-provider';
+import { Input } from './ui/input';
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -22,7 +24,18 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({ isOpen, onOpenChange }: SettingsDialogProps) {
+  const { appName, setAppName } = useApp();
   const [maintenanceMode, setMaintenanceMode] = React.useState(false);
+  const [currentAppName, setCurrentAppName] = React.useState(appName);
+
+  React.useEffect(() => {
+    setCurrentAppName(appName);
+  }, [appName, isOpen]);
+
+  const handleSave = () => {
+    setAppName(currentAppName);
+    onOpenChange(false);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -37,8 +50,13 @@ export function SettingsDialog({ isOpen, onOpenChange }: SettingsDialogProps) {
           <div className="space-y-4">
             <h3 className="text-sm font-medium text-muted-foreground">Information</h3>
             <div className="flex items-center justify-between">
-              <Label>App Name</Label>
-              <span className="text-sm font-mono">CampusConnect</span>
+              <Label htmlFor="app-name">App Name</Label>
+              <Input
+                id="app-name"
+                className="w-48 text-sm font-mono"
+                value={currentAppName}
+                onChange={(e) => setCurrentAppName(e.target.value)}
+              />
             </div>
             <div className="flex items-center justify-between">
               <Label>App Version</Label>
@@ -71,7 +89,7 @@ export function SettingsDialog({ isOpen, onOpenChange }: SettingsDialogProps) {
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          <Button type="button" disabled>Save Changes</Button>
+          <Button type="button" onClick={handleSave}>Save Changes</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
