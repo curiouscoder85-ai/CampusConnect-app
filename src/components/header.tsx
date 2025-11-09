@@ -5,6 +5,7 @@ import { UserNav } from './user-nav';
 import Logo from './logo';
 import { cn } from '@/lib/utils';
 import { useSidebar } from './ui/sidebar';
+import { ThemeToggle } from './theme-toggle';
 
 export function Header({ className }: { className?: string }) {
   const { isMobile } = useSidebar();
@@ -20,6 +21,7 @@ export function Header({ className }: { className?: string }) {
       </div>
 
       <div className="flex flex-1 items-center justify-end gap-x-4 self-stretch lg:gap-x-6">
+        <ThemeToggle />
         <UserNav />
       </div>
     </header>
