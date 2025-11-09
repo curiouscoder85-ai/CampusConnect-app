@@ -1,3 +1,4 @@
+'use client';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -13,10 +14,12 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { getUserById } from '@/lib/mock-data';
-import type { Course } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import type { Course, User } from '@/lib/types';
 import { BookOpen } from 'lucide-react';
+import { useDoc } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { useFirestore, useMemoFirebase } from '@/firebase/provider';
+import { Skeleton } from './ui/skeleton';
 
 interface CourseCardProps {
   course: Course;
@@ -31,16 +34,20 @@ export function CourseCard({
   link,
   action = 'view',
 }: CourseCardProps) {
-  const teacher = getUserById(course.teacherId);
-  const showProgress = typeof enrollmentProgress === 'number';
+  const firestore = useFirestore();
+  const teacherRef = useMemoFirebase(() => doc(firestore, 'users', course.teacherId), [firestore, course.teacherId]);
+  const { data: teacher, isLoading: teacherLoading } = useDoc<User>(teacherRef);
   
+  const showProgress = typeof enrollmentProgress === 'number';
+
   const getInitials = (name: string) => {
+    if (!name) return '??';
     const names = name.split(' ');
     if (names.length > 1) {
       return `${names[0][0]}${names[1][0]}`;
     }
     return name.substring(0, 2);
-  }
+  };
 
   return (
     <Card className="flex h-full flex-col overflow-hidden transition-all hover:shadow-lg">
@@ -48,7 +55,7 @@ export function CourseCard({
         <Link href={link}>
           <div className="relative aspect-[3/2] w-full">
             <Image
-              src={course.image}
+              src={course.image || 'https://picsum.photos/seed/1/600/400'}
               alt={course.title}
               fill
               className="object-cover"
@@ -79,7 +86,12 @@ export function CourseCard({
           </div>
         )}
         <div className="flex w-full items-center justify-between">
-          {teacher && (
+          {teacherLoading ? (
+             <div className="flex items-center gap-2">
+                <Skeleton className="h-8 w-8 rounded-full" />
+                <Skeleton className="h-4 w-24" />
+             </div>
+          ) : teacher && (
             <div className="flex items-center gap-2">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={teacher.avatar} alt={teacher.name} />

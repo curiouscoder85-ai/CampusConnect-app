@@ -1,8 +1,21 @@
-import { courses } from '@/lib/mock-data';
+'use client';
+
 import { CourseCard } from '@/components/course-card';
+import { useCollection } from '@/firebase';
+import { useMemo } from 'react';
+import { collection, query, where } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import type { Course } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function CourseCatalogPage() {
-  const availableCourses = courses.filter((c) => c.status === 'approved');
+  const firestore = useFirestore();
+  const coursesQuery = useMemo(
+    () =>
+      query(collection(firestore, 'courses'), where('status', '==', 'approved')),
+    [firestore]
+  );
+  const { data: courses, isLoading } = useCollection<Course>(coursesQuery);
 
   return (
     <div className="flex flex-col gap-8">
@@ -15,7 +28,11 @@ export default function CourseCatalogPage() {
         </p>
       </div>
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {availableCourses.map((course) => (
+        {isLoading &&
+          Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-96 w-full" />
+          ))}
+        {courses?.map((course) => (
           <CourseCard
             key={course.id}
             course={course}

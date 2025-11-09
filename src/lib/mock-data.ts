@@ -2,11 +2,11 @@ import type { User, Course, Enrollment, Feedback, Submission } from './types';
 
 // This data is now for reference and will be replaced by Firestore data.
 export const users: User[] = [
-  { id: '1', name: 'Admin User', email: 'admin@campus.com', role: 'admin', avatar: '/avatars/01.png' },
-  { id: '2', name: 'Karthik S', email: 'karthik@campus.com', role: 'teacher', avatar: '/avatars/02.png' },
-  { id: '3', name: 'Pranav S', email: 'pranav@campus.com', role: 'student', avatar: '/avatars/03.png' },
-  { id: '4', name: 'Jane Doe', email: 'jane@example.com', role: 'student', avatar: '/avatars/04.png' },
-  { id: '5', name: 'John Smith', email: 'john@example.com', role: 'teacher', avatar: '/avatars/05.png' },
+  { id: '1', name: 'Admin User', email: 'admin@campus.com', role: 'admin', avatar: '/avatars/01.png', firstName: 'Admin', lastName: 'User' },
+  { id: '2', name: 'Karthik S', email: 'karthik@campus.com', role: 'teacher', avatar: '/avatars/02.png', firstName: 'Karthik', lastName: 'S' },
+  { id: '3', name: 'Pranav S', email: 'pranav@campus.com', role: 'student', avatar: '/avatars/03.png', firstName: 'Pranav', lastName: 'S' },
+  { id: '4', name: 'Jane Doe', email: 'jane@example.com', role: 'student', avatar: '/avatars/04.png', firstName: 'Jane', lastName: 'Doe' },
+  { id: '5', name: 'John Smith', email: 'john@example.com', role: 'teacher', avatar: '/avatars/05.png', firstName: 'John', lastName: 'Smith' },
 ];
 
 export const courses: Course[] = [

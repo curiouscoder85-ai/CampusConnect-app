@@ -4,6 +4,8 @@ export type User = {
   email: string;
   role: 'admin' | 'teacher' | 'student';
   avatar: string;
+  firstName?: string;
+  lastName?: string;
 };
 
 export type Assignment = {
@@ -58,6 +60,3 @@ export type Feedback = {
   comment: string;
   createdAt: Date;
 };
-
-// Add Omit type helper if it's not available globally
-type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
