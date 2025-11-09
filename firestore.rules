@@ -53,11 +53,10 @@ service cloud.firestore {
         return isSignedIn() && request.auth.uid == userId;
       }
       
-      // Admins can create/read/update/delete any user.
-      // A user can create their own document, and read/update/delete their own document.
+      allow list, get: if isRole('admin');
       allow read, write: if isRole('admin');
-      allow read, update, delete: if isOwner();
       allow create: if isOwner() && request.resource.data.id == userId;
+      allow update, delete: if isOwner();
     }
 
     /**
