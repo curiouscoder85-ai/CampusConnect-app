@@ -1,9 +1,9 @@
 'use client';
 
-import { useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
 import type { Enrollment, Course, User } from '@/lib/types';
-import { useDoc } from '@/firebase';
+import { useCollection, useDoc } from '@/firebase';
 import { CourseCard } from '@/components/course-card';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
