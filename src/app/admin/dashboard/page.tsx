@@ -15,15 +15,14 @@ import {
 } from 'recharts';
 import { useCollection } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
-import { useMemo } from 'react';
+import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 
 export default function AdminDashboardPage() {
   const firestore = useFirestore();
 
-  const usersQuery = useMemo(() => collection(firestore, 'users'), [firestore]);
-  const coursesQuery = useMemo(() => collection(firestore, 'courses'), [firestore]);
-  const pendingCoursesQuery = useMemo(() => query(collection(firestore, 'courses'), where('status', '==', 'pending')), [firestore]);
+  const usersQuery = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
+  const coursesQuery = useMemoFirebase(() => collection(firestore, 'courses'), [firestore]);
+  const pendingCoursesQuery = useMemoFirebase(() => query(collection(firestore, 'courses'), where('status', '==', 'pending')), [firestore]);
 
   const { data: users, isLoading: usersLoading } = useCollection(usersQuery);
   const { data: courses, isLoading: coursesLoading } = useCollection(coursesQuery);
