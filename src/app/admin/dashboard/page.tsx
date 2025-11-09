@@ -1,3 +1,5 @@
+'use client';
+
 import { DashboardStatCard } from '@/components/dashboard-stat-card';
 import { users, courses } from '@/lib/mock-data';
 import { Users, BookOpen, Clock } from 'lucide-react';
