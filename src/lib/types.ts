@@ -8,29 +8,29 @@ export type User = {
   lastName?: string;
 };
 
-export type Assignment = {
+export type ContentItem = {
   id: string;
   title: string;
-  description: string;
+  type: 'video' | 'reading' | 'quiz';
+  url?: string; // For video
+  content?: string; // For reading
+  questions?: any[]; // For quiz
 };
 
 export type Module = {
   id: string;
   title: string;
   description: string;
-  videos: { id: string; title: string; url: string }[];
-  reading: { id: string; title: string; content: string }[];
-  quizzes: { id: string; title: string; questions: any[] }[];
+  content: ContentItem[];
 };
 
 export type Course = {
-  id: string;
+  id:string;
   title: string;
   description: string;
   teacherId: string;
   status: 'pending' | 'approved' | 'rejected';
   modules?: Module[];
-  assignments?: Assignment[];
   image: string;
 };
 
@@ -59,4 +59,10 @@ export type Feedback = {
   rating: number;
   comment: string;
   createdAt: Date;
+};
+
+export type Assignment = {
+    id: string;
+    title: string;
+    description: string;
 };

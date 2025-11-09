@@ -6,9 +6,7 @@ import { notFound } from 'next/navigation';
 import { CourseForm } from '../../_components/course-form';
 import type { Course } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { UploadCloud } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ModuleEditor } from '../../_components/module-editor';
 
 export default function EditCoursePage({ params }: { params: { id: string } }) {
   const firestore = useFirestore();
@@ -34,18 +32,7 @@ export default function EditCoursePage({ params }: { params: { id: string } }) {
         <CourseForm course={course} />
       </div>
       <div className="space-y-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-headline">Course Materials</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center">
-            <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
-            <p className="mt-4 text-sm text-muted-foreground">
-              Feature coming soon! Upload videos, PDFs, and create quizzes here.
-            </p>
-            <Button disabled className="mt-4">Upload Content</Button>
-          </CardContent>
-        </Card>
+        <ModuleEditor course={course} />
       </div>
     </div>
   );
