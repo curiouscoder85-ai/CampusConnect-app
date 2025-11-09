@@ -85,8 +85,10 @@ service cloud.firestore {
       }
 
 
-      // Read rules: Public read access
-      allow get, list: if true;
+      // Read rules: Public read access for approved courses
+      allow get: if true;
+      allow list: if query.get('status') == 'approved';
+
 
       // Write rules: Owner-only writes, validate teacherId on create
       allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid;
@@ -220,7 +222,7 @@ service cloud.firestore {
 
       // Read rules
       allow get: if isStudentEnrolled(resource.data.userId) || isTeacherOfCourse(resource.data.courseId);
-      allow list: if request.auth != null && request.auth.uid == request.query.where.userId;
+      allow list: if request.auth != null && request.auth.uid == request.query.get('where')[0][2];
 
 
       // Write rules
