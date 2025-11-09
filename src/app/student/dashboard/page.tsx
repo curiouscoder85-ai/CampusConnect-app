@@ -29,25 +29,22 @@ function EnrolledCourseCard({ enrollment }: { enrollment: Enrollment }) {
 }
 
 export default function StudentDashboardPage() {
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
-  const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
-  const { data: userData, isLoading: userLoading } = useDoc<User>(userDocRef);
-
   const enrollmentsQuery = useMemoFirebase(
-    () => (user ? query(collection(firestore, 'enrollments'), where('userId', '==', user.uid)) : null),
+    () => (user ? query(collection(firestore, 'enrollments'), where('userId', '==', user.id)) : null),
     [firestore, user]
   );
   const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
-  const isLoading = userLoading || enrollmentsLoading;
+  const isLoading = isUserLoading || enrollmentsLoading;
 
   return (
     <div className="flex flex-col gap-8">
       <div>
         <h1 className="font-headline text-3xl font-bold tracking-tight">
-          Welcome back, {userData?.firstName || 'Student'}!
+          Welcome back, {user?.firstName || 'Student'}!
         </h1>
         <p className="text-muted-foreground">Let's continue your learning journey.</p>
       </div>

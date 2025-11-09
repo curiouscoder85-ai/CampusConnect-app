@@ -35,7 +35,7 @@ export default function StudentCoursePage({ params }: { params: { id: string } }
       user
         ? query(
             collection(firestore, 'enrollments'),
-            where('userId', '==', user.uid),
+            where('userId', '==', user.id),
             where('courseId', '==', params.id)
           )
         : null,
@@ -71,7 +71,7 @@ export default function StudentCoursePage({ params }: { params: { id: string } }
     if (!user) return;
     const enrollmentsCol = collection(firestore, 'enrollments');
     addDocumentNonBlocking(enrollmentsCol, {
-      userId: user.uid,
+      userId: user.id,
       courseId: course.id,
       progress: 0,
       completed: false
