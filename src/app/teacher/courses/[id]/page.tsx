@@ -3,8 +3,8 @@
 import React from 'react';
 import { CourseDetails } from '../_components/course-details';
 
-export default function TeacherCourseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = React.use(params);
+export default function TeacherCourseDetailsPage({ params }: { params: { id: string } }) {
+  const { id } = params;
 
   if (!id) {
     // This case should ideally not happen with Next.js file-based routing
