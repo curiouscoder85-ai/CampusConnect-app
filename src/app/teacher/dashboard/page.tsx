@@ -11,33 +11,29 @@ export default function TeacherDashboardPage() {
   const { user, isUserLoading: userLoading } = useUser();
   const firestore = useFirestore();
 
-  console.log('TeacherDashboard: userLoading:', userLoading, 'user:', user);
-
   const coursesQuery = useMemoFirebase(
     () => (user ? query(collection(firestore, 'courses'), where('teacherId', '==', user.id)) : null),
     [firestore, user]
   );
   const { data: teacherCourses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
 
-  console.log('TeacherDashboard: coursesLoading:', coursesLoading, 'teacherCourses:', teacherCourses);
-
   const courseIds = useMemo(() => teacherCourses?.map((c) => c.id) || [], [teacherCourses]);
 
   const enrollmentsQuery = useMemoFirebase(
     () => {
-        if (!user || coursesLoading || courseIds.length === 0) return null;
+        if (userLoading || coursesLoading || courseIds.length === 0) return null;
         return query(collection(firestore, 'enrollments'), where('courseId', 'in', courseIds));
     },
-    [firestore, user, coursesLoading, courseIds]
+    [firestore, userLoading, coursesLoading, courseIds]
   );
   const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
   
   const feedbackQuery = useMemoFirebase(
     () => {
-        if (!user || courseIds.length === 0) return null;
+        if (userLoading || coursesLoading || courseIds.length === 0) return null;
         return query(collectionGroup(firestore, 'feedback'), where('courseId', 'in', courseIds))
     },
-    [firestore, user, courseIds]
+    [firestore, userLoading, coursesLoading, courseIds]
   );
   const { data: courseFeedback, isLoading: feedbackLoading } = useCollection<Feedback>(feedbackQuery);
 
