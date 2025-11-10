@@ -55,9 +55,10 @@ export type Submission = {
     userId: string;
     assignmentId: string;
     courseId: string;
+    teacherId: string; // Denormalized for querying
     content: string;
     grade: number | null;
-    submittedAt: Date;
+    submittedAt: any; // Using `any` for Firebase Timestamp compatibility
 };
 
 export type Feedback = {
@@ -66,7 +67,7 @@ export type Feedback = {
   courseId: string;
   rating: number;
   comment: string;
-  createdAt: Date;
+  createdAt: any; // Using `any` for Firebase Timestamp compatibility
 };
 
 export type Assignment = {

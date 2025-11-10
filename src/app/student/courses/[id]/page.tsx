@@ -61,6 +61,34 @@ export default function StudentCoursePage({ params }: { params: { id: string } }
   const { data: enrollments, isLoading: enrollmentLoading } = useCollection<Enrollment>(enrollmentsQuery);
   const enrollment = enrollments?.[0];
 
+  const handleSubmitAssignment = (assignmentId: string) => {
+    if (!user || !course) return;
+
+    // In a real app, you'd have a form to collect submission content.
+    // For this demo, we'll use placeholder content.
+    const submissionContent = `This is a submission for assignment ${assignmentId}.`;
+    
+    // Note: The path to the submissions sub-collection needs the assignmentId.
+    // This assumes assignments are top-level content items in a module.
+    const submissionsCol = collection(firestore, 'courses', course.id, 'assignments', assignmentId, 'submissions');
+    
+    addDocumentNonBlocking(submissionsCol, {
+      userId: user.id,
+      courseId: course.id,
+      assignmentId: assignmentId,
+      teacherId: course.teacherId, // Denormalize teacherId for easier queries
+      content: submissionContent,
+      submittedAt: serverTimestamp(),
+      grade: null,
+    });
+
+    toast({
+      title: 'Assignment Submitted!',
+      description: 'Your submission has been received.',
+    });
+  };
+
+
   if (courseLoading || enrollmentLoading) {
     return (
       <div className="mx-auto max-w-7xl">
@@ -145,6 +173,8 @@ export default function StudentCoursePage({ params }: { params: { id: string } }
   };
 
   const defaultOpenAccordion = course.modules && course.modules.length > 0 ? [course.modules[0].id] : [];
+  
+  const assignments = course.modules?.flatMap(m => m.content.filter(c => c.type === 'quiz')) ?? [];
 
   return (
     <>
@@ -206,11 +236,19 @@ export default function StudentCoursePage({ params }: { params: { id: string } }
                       <CardTitle className="font-headline text-lg">Assignments</CardTitle>
                   </CardHeader>
                   <CardContent>
-                      <div>
-                          <h4 className="font-semibold">Final Project</h4>
-                          <p className="text-sm text-muted-foreground mb-4">Apply what you've learned to build a final project.</p>
-                          <Button>Submit Assignment</Button>
-                      </div>
+                      {assignments.length > 0 ? (
+                        <div className="space-y-4">
+                          {assignments.map(assignment => (
+                            <div key={assignment.id}>
+                                <h4 className="font-semibold">{assignment.title}</h4>
+                                <p className="text-sm text-muted-foreground mb-4">Apply what you've learned.</p>
+                                <Button onClick={() => handleSubmitAssignment(assignment.id)}>Submit Assignment</Button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No assignments for this course yet.</p>
+                      )}
                   </CardContent>
               </Card>
 
@@ -269,5 +307,3 @@ export default function StudentCoursePage({ params }: { params: { id: string } }
     </>
   );
 }
-
-    

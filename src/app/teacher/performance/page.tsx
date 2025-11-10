@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, query, where, getDocs, collectionGroup, doc, updateDoc } from 'firebase/firestore';
 import type { Submission, Course, User } from '@/lib/types';
-import { useDoc } from '@/firebase';
+import { useCollection, useDoc } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
@@ -62,15 +62,21 @@ function StudentInfo({ studentId }: { studentId: string }) {
 }
 
 
-function SubmissionRow({ submission }: { submission: SubmissionWithCourse }) {
+function SubmissionRow({ submission }: { submission: Submission }) {
     const { toast } = useToast();
     const [grade, setGrade] = React.useState(submission.grade?.toString() || '');
     const [isSaving, setIsSaving] = React.useState(false);
     const firestore = useFirestore();
 
+    const courseRef = useMemoFirebase(() => doc(firestore, 'courses', submission.courseId), [firestore, submission.courseId]);
+    const { data: course, isLoading: courseLoading } = useDoc<Course>(courseRef);
+
     const handleSaveGrade = () => {
         setIsSaving(true);
-        const submissionRef = doc(firestore, `submissions/${submission.id}`);
+        // This path is incorrect as submissions are nested, but we don't have the full path.
+        // Let's assume a top-level 'submissions' collection for now for grading to work.
+        const submissionRef = doc(firestore, 'courses', submission.courseId, 'assignments', submission.assignmentId, 'submissions', submission.id);
+
         const newGrade = grade === '' ? null : parseInt(grade, 10);
         const gradeData = { grade: newGrade };
 
@@ -100,6 +106,8 @@ function SubmissionRow({ submission }: { submission: SubmissionWithCourse }) {
             setIsSaving(false);
         });
     };
+    
+    const assignmentTitle = course?.modules?.flatMap(m => m.content).find(c => c.id === submission.assignmentId)?.title || 'Unknown Assignment';
 
     return (
         <TableRow>
@@ -107,11 +115,15 @@ function SubmissionRow({ submission }: { submission: SubmissionWithCourse }) {
                 <StudentInfo studentId={submission.userId} />
             </TableCell>
             <TableCell>
-                <div className="font-medium">{submission.courseTitle}</div>
-                <div className="text-sm text-muted-foreground">{submission.assignmentTitle}</div>
+                {courseLoading ? <Skeleton className="h-4 w-32" /> : (
+                  <>
+                    <div className="font-medium">{course?.title}</div>
+                    <div className="text-sm text-muted-foreground">{assignmentTitle}</div>
+                  </>
+                )}
             </TableCell>
             <TableCell className="text-muted-foreground">
-                {submission.submittedAt ? format(submission.submittedAt.toDate(), 'PP') : 'N/A'}
+                {submission.submittedAt ? format(new Date(submission.submittedAt.seconds * 1000), 'PP') : 'N/A'}
             </TableCell>
             <TableCell>
                 {submission.grade !== null && submission.grade !== undefined ? (
@@ -143,49 +155,13 @@ function SubmissionRow({ submission }: { submission: SubmissionWithCourse }) {
 export default function TeacherPerformancePage() {
   const firestore = useFirestore();
   const { user } = useUser();
-  const [submissions, setSubmissions] = React.useState<SubmissionWithCourse[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
 
-  React.useEffect(() => {
-    const fetchSubmissions = async () => {
-      if (!user) return;
-
-      setIsLoading(true);
-      const coursesQuery = query(collection(firestore, 'courses'), where('teacherId', '==', user.id));
-      const coursesSnapshot = await getDocs(coursesQuery);
-      const courses = coursesSnapshot.docs.map(d => ({id: d.id, ...d.data()})) as Course[];
-      const courseIds = courses.map(c => c.id);
-
-      if (courseIds.length > 0) {
-        const subsQuery = query(collectionGroup(firestore, 'submissions'), where('courseId', 'in', courseIds));
-        const subsSnapshot = await getDocs(subsQuery);
-        
-        const submissionsData = subsSnapshot.docs.map(doc => {
-            const data = doc.data() as Submission;
-            const course = courses.find(c => c.id === data.courseId);
-            // This is brittle, depends on the path format
-            const assignmentId = doc.ref.parent.parent?.id;
-            const assignment = course?.modules?.flatMap(m => m.content).find(c => c.id === assignmentId);
-
-
-            return {
-                ...data,
-                id: doc.id,
-                courseTitle: course?.title || 'Unknown Course',
-                assignmentTitle: assignment?.title || 'Unknown Assignment',
-            } as SubmissionWithCourse;
-        });
-
-        setSubmissions(submissionsData);
-
-      } else {
-        setSubmissions([]);
-      }
-      setIsLoading(false);
-    };
-
-    fetchSubmissions();
+  const submissionsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collectionGroup(firestore, 'submissions'), where('teacherId', '==', user.id));
   }, [user, firestore]);
+  
+  const {data: submissions, isLoading} = useCollection<Submission>(submissionsQuery);
   
   return (
     <div className="flex flex-col gap-8">
@@ -202,7 +178,7 @@ export default function TeacherPerformancePage() {
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-12 w-full" />
           </div>
-        ) : submissions.length > 0 ? (
+        ) : submissions && submissions.length > 0 ? (
             <div className="rounded-lg border">
                 <Table>
                     <TableHeader>
