@@ -100,12 +100,14 @@ export function CourseCard({
               <span className="text-sm font-medium">{teacher.name}</span>
             </div>
           )}
-          <Button asChild variant={action === 'enroll' ? 'default' : 'secondary'} size="sm">
-            <Link href={link}>
-              <BookOpen className="mr-2 h-4 w-4" />
-              {action === 'enroll' ? 'Enroll' : 'View'}
-            </Link>
-          </Button>
+          <Link href={link} passHref>
+            <Button asChild variant={action === 'enroll' ? 'default' : 'secondary'} size="sm">
+              <a>
+                <BookOpen className="mr-2 h-4 w-4" />
+                {action === 'enroll' ? 'Enroll' : 'View'}
+              </a>
+            </Button>
+          </Link>
         </div>
       </CardFooter>
     </Card>
