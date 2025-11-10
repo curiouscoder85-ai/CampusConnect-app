@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -156,27 +157,15 @@ export default function TeacherPerformancePage() {
     return query(collectionGroup(firestore, 'submissions'), where('teacherId', '==', user.id));
   }, [user, firestore]);
   
-  const teacherCoursesQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(collection(firestore, 'courses'), where('teacherId', '==', user.id));
-  }, [user, firestore]);
-
-  const { data: teacherCourses, isLoading: coursesLoading } = useCollection<Course>(teacherCoursesQuery);
-
-  const courseIds = React.useMemo(() => teacherCourses?.map(c => c.id) || [], [teacherCourses]);
-
   const enrollmentsQuery = useMemoFirebase(() => {
-    // This guard is critical. It ensures the query is only created when all dependencies are ready.
-    if (coursesLoading || !teacherCourses || courseIds.length === 0) {
-      return null;
-    }
-    return query(collection(firestore, 'enrollments'), where('courseId', 'in', courseIds));
-  }, [firestore, courseIds, coursesLoading, teacherCourses]);
+    if (!user) return null;
+    return query(collection(firestore, 'enrollments'), where('teacherId', '==', user.id));
+  }, [user, firestore]);
 
   const {data: submissions, isLoading: submissionsLoading} = useCollection<Submission>(submissionsQuery);
   const {data: enrollments, isLoading: enrollmentsLoading} = useCollection<Enrollment>(enrollmentsQuery);
 
-  const isLoading = submissionsLoading || enrollmentsLoading || coursesLoading;
+  const isLoading = submissionsLoading || enrollmentsLoading;
   
   return (
     <div className="flex flex-col gap-8">

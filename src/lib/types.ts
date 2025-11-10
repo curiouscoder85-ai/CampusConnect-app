@@ -1,4 +1,5 @@
 
+
 export type User = {
   id: string;
   name: string;
@@ -46,6 +47,7 @@ export type Enrollment = {
   id: string;
   userId: string;
   courseId: string;
+  teacherId: string; // Denormalized for querying
   progress: number;
   completed: boolean;
 };
@@ -75,3 +77,4 @@ export type Assignment = {
     title: string;
     description: string;
 };
+

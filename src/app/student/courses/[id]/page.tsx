@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { notFound } from 'next/navigation';
@@ -118,6 +119,7 @@ export default function StudentCoursePage({ params }: { params: { id: string } }
     addDocumentNonBlocking(enrollmentsCol, {
       userId: user.id,
       courseId: course.id,
+      teacherId: course.teacherId, // Denormalize teacherId
       progress: 0,
       completed: false
     });
