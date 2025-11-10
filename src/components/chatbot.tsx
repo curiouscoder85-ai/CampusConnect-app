@@ -7,13 +7,11 @@ import { Input } from './ui/input';
 import { Bot, Send, X, Loader2, Sparkle } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { curiousBotAction } from '@/app/actions';
 import { nanoid } from 'nanoid';
 import type { Message } from '@/lib/types';
-import { collection, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Skeleton } from './ui/skeleton';
 
 const getInitials = (name: string) => {
@@ -31,28 +29,7 @@ export function Chatbot() {
   const [inputValue, setInputValue] = useState('');
   const [isBotLoading, setIsBotLoading] = useState(false);
   const { user } = useUser();
-  const firestore = useFirestore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const chatHistoryQuery = useMemoFirebase(
-    () =>
-      user
-        ? query(
-            collection(firestore, 'users', user.id, 'chatHistory'),
-            orderBy('createdAt', 'asc'),
-            limit(50)
-          )
-        : null,
-    [firestore, user]
-  );
-  
-  const { data: initialMessages, isLoading: isHistoryLoading } = useCollection<Message>(chatHistoryQuery, { listen: isOpen });
-
-  useEffect(() => {
-    if (initialMessages) {
-      setMessages(initialMessages);
-    }
-  }, [initialMessages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -63,32 +40,31 @@ export function Chatbot() {
   const handleSendMessage = async () => {
     if (inputValue.trim() === '' || isBotLoading || !user) return;
 
-    const userMessage: Omit<Message, 'id' | 'createdAt'> = { text: inputValue, role: 'user' };
+    const userMessage: Message = { text: inputValue, role: 'user', id: nanoid() };
     
-    const historyForPrompt = messages.map(m => ({ role: m.role, content: m.text }));
-
-    setMessages((prev) => [...prev, { ...userMessage, id: nanoid(), createdAt: new Date() }]);
+    const currentMessages = [...messages, userMessage];
+    setMessages(currentMessages);
     setInputValue('');
     setIsBotLoading(true);
 
-    // Save user message to Firestore
-    const chatHistoryCol = collection(firestore, 'users', user.id, 'chatHistory');
-    addDocumentNonBlocking(chatHistoryCol, { ...userMessage, createdAt: serverTimestamp() });
+    const historyForPrompt = currentMessages.map(m => ({ role: m.role, content: m.text }));
 
-    const responseText = await curiousBotAction({ message: inputValue, userId: user.id, history: historyForPrompt });
+    const responseText = await curiousBotAction({ 
+      message: inputValue, 
+      userId: user.id, 
+      // The history is now built from local state for the current session
+      history: historyForPrompt.slice(0, -1) 
+    });
     
-    const botMessage: Omit<Message, 'id' | 'createdAt'> = { text: responseText, role: 'bot' };
-    
-    // Save bot message to Firestore
-    addDocumentNonBlocking(chatHistoryCol, { ...botMessage, createdAt: serverTimestamp() });
+    const botMessage: Message = { text: responseText, role: 'bot', id: nanoid() };
 
-    setMessages((prev) => [...prev, { ...botMessage, id: nanoid(), createdAt: new Date() }]);
+    setMessages((prev) => [...prev, botMessage]);
     setIsBotLoading(false);
   };
   
    useEffect(() => {
-    // Reset messages when chat is closed
-    if (!isOpen) {
+    // Reset messages when chat is closed or opened
+    if (isOpen) {
       setMessages([]);
     }
   }, [isOpen]);
@@ -119,25 +95,13 @@ export function Chatbot() {
                   </Button>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
-                   {isHistoryLoading && (
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-3 justify-end">
-                        <Skeleton className="h-8 w-32 rounded-lg" />
-                        <Skeleton className="h-8 w-8 rounded-full" />
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Skeleton className="h-8 w-8 rounded-full" />
-                        <Skeleton className="h-8 w-40 rounded-lg" />
-                      </div>
-                    </div>
-                  )}
-                  {!isHistoryLoading && messages.length === 0 && (
+                  {messages.length === 0 && (
                      <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
                         <Bot className="h-12 w-12 mb-4" />
                         <p className="text-sm">Hi! I'm CuriousBot. Ask me about coding, personal growth, or anything else you're curious about!</p>
                      </div>
                   )}
-                  {!isHistoryLoading && messages.map((message) => (
+                  {messages.map((message) => (
                     <div
                       key={message.id}
                       className={cn(
