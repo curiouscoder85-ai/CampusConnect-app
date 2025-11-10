@@ -8,7 +8,7 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
-  SidebarMenuButton,
+  SidebarMenuButton,                        
 } from '@/components/ui/sidebar';
 import Logo from '@/components/logo';
 import { LayoutDashboard, BookCopy, MessageSquare, GraduationCap } from 'lucide-react';

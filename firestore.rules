@@ -56,7 +56,7 @@ service cloud.firestore {
         return isSignedIn() && request.auth.uid == userId;
       }
       
-      allow list: if isRole('admin');
+      allow list: if isSignedIn();
       // Any signed-in user can get any user doc to check public info like names and roles.
       allow get: if isSignedIn();
       allow create: if isOwner() && request.resource.data.id == userId || isRole('admin');
