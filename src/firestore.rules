@@ -73,7 +73,7 @@ service cloud.firestore {
      */
     match /courses/{courseId} {
       function isTeacherOwner() {
-        return isSignedIn() && resource.data.teacherId == request.auth.uid;
+          return isSignedIn() && get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId == request.auth.uid;
       }
 
       // Read rules: Public read access for approved courses, admins can list all
@@ -242,9 +242,7 @@ service cloud.firestore {
     
     // This rule allows teachers to list all submissions, and students to list their own submissions via a collection group query.
     match /{path=**}/submissions/{submissionId} {
-       allow list: if isRole('teacher') || request.query.where.userId == request.auth.uid;
+       allow list: if isRole('teacher') || (request.query.limit == 1000 && request.query.where.size() == 1 && request.query.where[0][0] == 'userId' && request.query.where[0][1] == '==' && request.query.where[0][2] == request.auth.uid);
     }
   }
 }
-
-    
