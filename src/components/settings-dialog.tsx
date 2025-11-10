@@ -17,6 +17,7 @@ import { firebaseConfig } from '@/firebase/config';
 import packageJson from '@/../package.json';
 import { useApp } from '@/components/app-provider';
 import { Input } from './ui/input';
+import { useAuth } from './auth-provider';
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({ isOpen, onOpenChange }: SettingsDialogProps) {
+  const { user } = useAuth();
   const { appName, setAppName } = useApp();
   const [maintenanceMode, setMaintenanceMode] = React.useState(false);
   const [currentAppName, setCurrentAppName] = React.useState(appName);
@@ -56,6 +58,7 @@ export function SettingsDialog({ isOpen, onOpenChange }: SettingsDialogProps) {
                 className="w-48 text-sm font-mono"
                 value={currentAppName}
                 onChange={(e) => setCurrentAppName(e.target.value)}
+                disabled={user?.role !== 'admin'}
               />
             </div>
             <div className="flex items-center justify-between">
@@ -67,29 +70,35 @@ export function SettingsDialog({ isOpen, onOpenChange }: SettingsDialogProps) {
               <span className="text-sm font-mono">{firebaseConfig.projectId}</span>
             </div>
           </div>
-          <Separator />
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium text-muted-foreground">Functions</h3>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="maintenance-mode" className="flex flex-col gap-1">
-                <span>Maintenance Mode</span>
-                <span className="font-normal text-xs text-muted-foreground">
-                  Temporarily disable access for non-admins.
-                </span>
-              </Label>
-              <Switch
-                id="maintenance-mode"
-                checked={maintenanceMode}
-                onCheckedChange={setMaintenanceMode}
-              />
-            </div>
-          </div>
+          {user?.role === 'admin' && (
+            <>
+              <Separator />
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-muted-foreground">Functions</h3>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="maintenance-mode" className="flex flex-col gap-1">
+                    <span>Maintenance Mode</span>
+                    <span className="font-normal text-xs text-muted-foreground">
+                      Temporarily disable access for non-admins.
+                    </span>
+                  </Label>
+                  <Switch
+                    id="maintenance-mode"
+                    checked={maintenanceMode}
+                    onCheckedChange={setMaintenanceMode}
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          <Button type="button" onClick={handleSave}>Save Changes</Button>
+          {user?.role === 'admin' && (
+             <Button type="button" onClick={handleSave}>Save Changes</Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

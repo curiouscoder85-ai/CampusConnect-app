@@ -36,10 +36,10 @@ export function UserNav() {
   };
 
   const handleSettingsSelect = () => {
-    if (user.role === 'admin') {
+    if (user.role === 'admin' || user.role === 'teacher') {
       setIsSettingsDialogOpen(true);
     } else {
-      // For non-admins, settings might just open their profile
+      // For students, settings opens their profile
       setIsProfileDialogOpen(true);
     }
   };
@@ -82,30 +82,16 @@ export function UserNav() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      
-      {/* Dialogs for Admin */}
-      {user.role === 'admin' && (
-        <>
-          <EditUserDialog
-            user={user}
-            isOpen={isProfileDialogOpen}
-            onOpenChange={setIsProfileDialogOpen}
-          />
-          <SettingsDialog
-            isOpen={isSettingsDialogOpen}
-            onOpenChange={setIsSettingsDialogOpen}
-          />
-        </>
-      )}
 
-      {/* Profile Dialog for other roles (if needed) */}
-      {user.role !== 'admin' && (
-        <EditUserDialog
-            user={user}
-            isOpen={isProfileDialogOpen}
-            onOpenChange={setIsProfileDialogOpen}
-        />
-      )}
+      <EditUserDialog
+        user={user}
+        isOpen={isProfileDialogOpen}
+        onOpenChange={setIsProfileDialogOpen}
+      />
+      <SettingsDialog
+        isOpen={isSettingsDialogOpen}
+        onOpenChange={setIsSettingsDialogOpen}
+      />
     </>
   );
 }
