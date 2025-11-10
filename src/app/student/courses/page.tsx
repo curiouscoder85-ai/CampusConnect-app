@@ -1,5 +1,7 @@
+
 'use client';
 
+import { useMemo } from 'react';
 import { CourseCard } from '@/components/course-card';
 import { useCollection, useUser } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
