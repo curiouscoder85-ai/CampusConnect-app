@@ -4,7 +4,7 @@ import {
   getPersonalizedRecommendations,
   PersonalizedRecommendationsInput,
 } from '@/ai/flows/personalized-learning-recommendations';
-import { curiousBot } from '@/ai/flows/curious-bot-flow';
+import { curiousBot, CuriousBotInput } from '@/ai/flows/curious-bot-flow';
 
 export async function getPersonalizedRecommendationsAction(
   input: PersonalizedRecommendationsInput
@@ -18,9 +18,9 @@ export async function getPersonalizedRecommendationsAction(
   }
 }
 
-export async function curiousBotAction(message: string) {
+export async function curiousBotAction(input: CuriousBotInput) {
   try {
-    const result = await curiousBot({ message });
+    const result = await curiousBot(input);
     return result.response;
   } catch (error) {
     console.error('Error with CuriousBot:', error);

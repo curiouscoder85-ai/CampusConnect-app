@@ -9,14 +9,16 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+import { getUserProfile } from '../tools/user-tools';
 
 const CuriousBotInputSchema = z.object({
-  message: z.string().describe('The user\'s message to the chatbot.'),
+  message: z.string().describe("The user's message to the chatbot."),
+  userId: z.string().describe('The ID of the user sending the message.'),
 });
 export type CuriousBotInput = z.infer<typeof CuriousBotInputSchema>;
 
 const CuriousBotOutputSchema = z.object({
-  response: z.string().describe('The chatbot\'s response to the user.'),
+  response: z.string().describe("The chatbot's response to the user."),
 });
 export type CuriousBotOutput = z.infer<typeof CuriousBotOutputSchema>;
 
@@ -30,8 +32,11 @@ const prompt = ai.definePrompt({
   name: 'curiousBotPrompt',
   input: { schema: CuriousBotInputSchema },
   output: { schema: CuriousBotOutputSchema },
+  tools: [getUserProfile],
   prompt: `You are CuriousBot.
 Your purpose is to act as a personal learning and motivation assistant who guides users step by step in both technical skills (like JavaScript, React, Node.js, Firebase, MongoDB) and self-growth (like confidence, communication, mindset, and discipline).
+
+If you don't know the user's name, use the getUserProfile tool to look it up. Address them by their first name to make the conversation more personal.
 
 You must always explain concepts in a simple, understandable, and structured way — using examples, analogies, and short practical steps.
 

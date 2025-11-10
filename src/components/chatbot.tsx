@@ -42,14 +42,14 @@ export function Chatbot() {
   useEffect(scrollToBottom, [messages]);
 
   const handleSendMessage = async () => {
-    if (inputValue.trim() === '' || isLoading) return;
+    if (inputValue.trim() === '' || isLoading || !user) return;
 
     const userMessage: Message = { id: nanoid(), text: inputValue, sender: 'user' };
     setMessages((prev) => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
 
-    const responseText = await curiousBotAction(inputValue);
+    const responseText = await curiousBotAction({ message: inputValue, userId: user.id });
 
     const botMessage: Message = { id: nanoid(), text: responseText, sender: 'bot' };
     setMessages((prev) => [...prev, botMessage]);
