@@ -1,8 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, getDocs, collectionGroup } from 'firebase/firestore';
+import { useUser, useFirestore } from '@/firebase';
+import { collection, query, where, getDocs, collectionGroup, DocumentData } from 'firebase/firestore';
 import type { Feedback, Course } from '@/lib/types';
 import { FeedbackTable } from '@/app/admin/feedback/_components/feedback-table'; // Re-using the admin component
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,24 +15,39 @@ export default function TeacherFeedbackPage() {
 
   React.useEffect(() => {
     const fetchFeedback = async () => {
-      if (!user) return;
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
       
       setIsLoading(true);
-      // 1. Find all courses for the current teacher
-      const coursesQuery = query(collection(firestore, 'courses'), where('teacherId', '==', user.id));
-      const coursesSnapshot = await getDocs(coursesQuery);
-      const courseIds = coursesSnapshot.docs.map(doc => doc.id);
+      try {
+        // 1. Find all courses for the current teacher
+        const coursesQuery = query(collection(firestore, 'courses'), where('teacherId', '==', user.id));
+        const coursesSnapshot = await getDocs(coursesQuery);
+        const teacherCourses = coursesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course));
 
-      if (courseIds.length > 0) {
-        // 2. Query the 'feedback' collection group where courseId is in the teacher's course list
-        const feedbackQuery = query(collectionGroup(firestore, 'feedback'), where('courseId', 'in', courseIds));
-        const feedbackSnapshot = await getDocs(feedbackQuery);
-        const feedbackData = feedbackSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Feedback));
-        setFeedback(feedbackData);
-      } else {
+        if (teacherCourses.length > 0) {
+          // 2. For each course, fetch its feedback
+          const allFeedback: Feedback[] = [];
+          for (const course of teacherCourses) {
+            const feedbackQuery = query(collection(firestore, 'courses', course.id, 'feedback'));
+            const feedbackSnapshot = await getDocs(feedbackQuery);
+            const courseFeedback = feedbackSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Feedback));
+            allFeedback.push(...courseFeedback);
+          }
+          // Sort feedback by date, newest first
+          allFeedback.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+          setFeedback(allFeedback);
+        } else {
+          setFeedback([]);
+        }
+      } catch (error) {
+        console.error("Error fetching feedback:", error);
         setFeedback([]);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     fetchFeedback();
