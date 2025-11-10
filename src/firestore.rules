@@ -14,7 +14,7 @@
  * - /users/{userId}/recommendations/{recommendationId}: Stores AI-powered content recommendations for each student. Only the user can access their own recommendations.
  *
  * Key Security Decisions:
- * - User listing is disallowed for non-admins.
+ * - User listing is allowed for all signed-in users.
  * - Data shapes are not strictly enforced, focusing on authorization.
  * - Ownership is enforced using path-based matching and denormalized fields like 'teacherId'.
  * - Ambiguous relationships default to strict owner-only access.
@@ -32,8 +32,6 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isRole(role) {
-      // Use request.auth.uid which is always available for authenticated requests.
-      // This is more reliable than trying to read a document that might be restricted.
       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
       return isSignedIn() && userDoc.data.role == role;
     }
@@ -56,8 +54,7 @@ service cloud.firestore {
         return isSignedIn() && request.auth.uid == userId;
       }
       
-      allow list: if isRole('admin');
-      // Any signed-in user can get any user doc to check public info like names and roles.
+      allow list: if isSignedIn();
       allow get: if isSignedIn();
       allow create: if isOwner() && request.resource.data.id == userId || isRole('admin');
       allow update: if isOwner() || isRole('admin');
@@ -75,13 +72,18 @@ service cloud.firestore {
      * @principle Enforces document ownership for writes and allows public reads.
      */
     match /courses/{courseId} {
+      function isTeacherOwner() {
+        return isSignedIn() && resource.data.teacherId == request.auth.uid;
+      }
+
       // Read rules: Public read access for approved courses, admins can list all
-      allow get, list: if true;
+      allow get: if true;
+      allow list: if true;
 
       // Write rules: Owner-only writes, validate teacherId on create
       allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid && isRole('teacher');
-      allow update: if request.auth.uid == resource.data.teacherId || isRole('admin');
-      allow delete: if request.auth.uid == resource.data.teacherId || isRole('admin');
+      allow update: if (isTeacherOwner() || isRole('admin'));
+      allow delete: if (isTeacherOwner() || isRole('admin'));
     }
 
     /**
@@ -233,9 +235,15 @@ service cloud.firestore {
       allow delete: if isOwner(userId);
     }
     
+    // This rule allows admins or teachers to perform a collection group query on 'feedback'
+    match /{path=**}/feedback/{feedbackId} {
+      allow list: if isRole('admin') || isRole('teacher');
+    }
+    
     // This rule allows teachers to perform a collection group query on 'submissions'
+    // and students to query for their own submissions.
     match /{path=**}/submissions/{submissionId} {
-      allow list: if isRole('teacher');
+      allow list: if isRole('teacher') || (request.auth.uid == request.query.where.userId);
     }
   }
 }
