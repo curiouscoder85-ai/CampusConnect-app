@@ -11,11 +11,15 @@ export default function TeacherDashboardPage() {
   const { user, isUserLoading: userLoading } = useUser();
   const firestore = useFirestore();
 
+  console.log('TeacherDashboard: userLoading:', userLoading, 'user:', user);
+
   const coursesQuery = useMemoFirebase(
     () => (user ? query(collection(firestore, 'courses'), where('teacherId', '==', user.id)) : null),
     [firestore, user]
   );
   const { data: teacherCourses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
+
+  console.log('TeacherDashboard: coursesLoading:', coursesLoading, 'teacherCourses:', teacherCourses);
 
   const courseIds = useMemo(() => teacherCourses?.map((c) => c.id) || [], [teacherCourses]);
 
