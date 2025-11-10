@@ -2,8 +2,8 @@
 
 import * as React from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
-import type { Enrollment, Course } from '@/lib/types';
+import { collection, query, where, doc, collectionGroup } from 'firebase/firestore';
+import type { Enrollment, Course, Submission } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -17,20 +17,20 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Trophy, Award } from 'lucide-react';
+import { Trophy, Award, FileText } from 'lucide-react';
 import { useDoc } from '@/firebase/firestore/use-doc';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { format } from 'date-fns';
 
 function ProgressRow({ enrollment }: { enrollment?: Enrollment }) {
   const firestore = useFirestore();
 
-  // Check if enrollment and courseId exist before creating the reference
   const courseRef = useMemoFirebase(
     () => (enrollment?.courseId ? doc(firestore, 'courses', enrollment.courseId) : null),
     [firestore, enrollment?.courseId]
   );
   const { data: course, isLoading } = useDoc<Course>(courseRef);
 
-  // Render skeleton if enrollment is missing or data is loading
   if (isLoading || !enrollment || !course) {
     return (
       <TableRow>
@@ -92,6 +92,45 @@ function ProgressRow({ enrollment }: { enrollment?: Enrollment }) {
   );
 }
 
+function GradeRow({ submission }: { submission: Submission }) {
+  const firestore = useFirestore();
+  const courseRef = useMemoFirebase(
+    () => doc(firestore, 'courses', submission.courseId),
+    [firestore, submission.courseId]
+  );
+  const { data: course, isLoading } = useDoc<Course>(courseRef);
+
+  if (isLoading) {
+    return (
+        <TableRow>
+            <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+            <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+            <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+            <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+        </TableRow>
+    )
+  }
+
+  const assignment = course?.modules?.flatMap(m => m.content).find(c => c.id === submission.assignmentId);
+
+  return (
+      <TableRow>
+          <TableCell className="font-medium">{course?.title || 'Unknown Course'}</TableCell>
+          <TableCell>{assignment?.title || 'Unknown Assignment'}</TableCell>
+          <TableCell className="text-muted-foreground">
+            {submission.submittedAt ? format(new Date(submission.submittedAt.seconds * 1000), 'PP') : 'N/A'}
+          </TableCell>
+          <TableCell>
+            {submission.grade !== null && submission.grade !== undefined ? (
+              <Badge variant="default">{submission.grade}</Badge>
+            ) : (
+              <Badge variant="secondary">Ungraded</Badge>
+            )}
+          </TableCell>
+      </TableRow>
+  )
+}
+
 export default function StudentProgressPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -103,49 +142,94 @@ export default function StudentProgressPage() {
   const { data: enrollments, isLoading: enrollmentsLoading } =
     useCollection<Enrollment>(enrollmentsQuery);
 
-  const isLoading = isUserLoading || enrollmentsLoading;
+  const submissionsQuery = useMemoFirebase(
+    () => (user ? query(collectionGroup(firestore, 'submissions'), where('userId', '==', user.id)) : null),
+    [firestore, user]
+  );
+  const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
+
+  const isLoading = isUserLoading || enrollmentsLoading || submissionsLoading;
 
   return (
     <div className="flex flex-col gap-8">
       <div>
         <h1 className="font-headline text-3xl font-bold tracking-tight flex items-center gap-3">
           <Trophy className="text-primary" />
-          My Progress
+          My Progress & Grades
         </h1>
         <p className="text-muted-foreground">
-          Track your course completion and access your certificates.
+          Track your course completion, review grades, and access your certificates.
         </p>
       </div>
 
-      <div className="rounded-lg border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Course</TableHead>
-              <TableHead>Progress</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Certificate</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <ProgressRow key={i} />
-              ))
-            ) : enrollments && enrollments.length > 0 ? (
-              enrollments.map((enrollment) => (
-                <ProgressRow key={enrollment.id} enrollment={enrollment} />
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">
-                  You are not enrolled in any courses yet.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <Tabs defaultValue="progress">
+        <TabsList>
+            <TabsTrigger value="progress">Course Progress</TabsTrigger>
+            <TabsTrigger value="grades">My Grades</TabsTrigger>
+        </TabsList>
+        <TabsContent value="progress" className="mt-4">
+          <div className="rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Course</TableHead>
+                  <TableHead>Progress</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Certificate</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <ProgressRow key={i} />
+                  ))
+                ) : enrollments && enrollments.length > 0 ? (
+                  enrollments.map((enrollment) => (
+                    <ProgressRow key={enrollment.id} enrollment={enrollment} />
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                      You are not enrolled in any courses yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+        <TabsContent value="grades" className="mt-4">
+           <div className="rounded-lg border">
+              <Table>
+                  <TableHeader>
+                      <TableRow>
+                          <TableHead>Course</TableHead>
+                          <TableHead>Assignment</TableHead>
+                          <TableHead>Submitted On</TableHead>
+                          <TableHead>Grade</TableHead>
+                      </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                      {isLoading ? (
+                           Array.from({ length: 3 }).map((_, i) => (
+                              <GradeRow key={i} submission={{} as Submission} />
+                          ))
+                      ) : submissions && submissions.length > 0 ? (
+                          submissions.map((submission) => (
+                              <GradeRow key={submission.id} submission={submission} />
+                          ))
+                      ) : (
+                          <TableRow>
+                              <TableCell colSpan={4} className="h-24 text-center">
+                                  No assignments have been submitted yet.
+                              </TableCell>
+                          </TableRow>
+                      )}
+                  </TableBody>
+              </Table>
+           </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
