@@ -1,14 +1,17 @@
 'use client';
 
 import { CourseCard } from '@/components/course-card';
-import { useCollection } from '@/firebase';
+import { useCollection, useUser } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
-import type { Course } from '@/lib/types';
+import type { Course, Enrollment } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function CourseCatalogPage() {
   const firestore = useFirestore();
+  const { user } = useUser();
+
+  // Query for all approved courses
   const coursesQuery = useMemoFirebase(
     () => {
       if (!firestore) return null;
@@ -16,7 +19,23 @@ export default function CourseCatalogPage() {
     },
     [firestore]
   );
-  const { data: courses, isLoading } = useCollection<Course>(coursesQuery);
+  const { data: courses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
+
+  // Query for the current user's enrollments
+  const enrollmentsQuery = useMemoFirebase(
+    () => {
+        if (!user) return null;
+        return query(collection(firestore, 'enrollments'), where('userId', '==', user.id));
+    },
+    [firestore, user]
+  );
+  const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
+
+  const enrolledCourseIds = useMemo(() => {
+    return new Set(enrollments?.map(e => e.courseId) || []);
+  }, [enrollments]);
+
+  const isLoading = coursesLoading || enrollmentsLoading;
 
   return (
     <div className="flex flex-col gap-8">
@@ -39,11 +58,10 @@ export default function CourseCatalogPage() {
             course={course}
             link={`/student/courses/${course.id}`}
             action="enroll"
+            isEnrolled={enrolledCourseIds.has(course.id)}
           />
         ))}
       </div>
     </div>
   );
 }
-
-    

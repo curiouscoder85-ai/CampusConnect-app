@@ -15,17 +15,20 @@ import {
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import type { Course, User } from '@/lib/types';
-import { BookOpen } from 'lucide-react';
-import { useDoc } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { BookOpen, Check } from 'lucide-react';
+import { useDoc, useUser } from '@/firebase';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { doc, collection, serverTimestamp } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { Skeleton } from './ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 interface CourseCardProps {
   course: Course;
   enrollmentProgress?: number;
   link: string;
   action?: 'view' | 'enroll';
+  isEnrolled?: boolean;
 }
 
 export function CourseCard({
@@ -33,8 +36,11 @@ export function CourseCard({
   enrollmentProgress,
   link,
   action = 'view',
+  isEnrolled = false,
 }: CourseCardProps) {
   const firestore = useFirestore();
+  const { user } = useUser();
+  const { toast } = useToast();
   const teacherRef = useMemoFirebase(() => doc(firestore, 'users', course.teacherId), [firestore, course.teacherId]);
   const { data: teacher, isLoading: teacherLoading } = useDoc<User>(teacherRef);
   
@@ -48,6 +54,56 @@ export function CourseCard({
     }
     return name.substring(0, 2);
   };
+  
+  const handleEnroll = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent link navigation
+    if (!user) {
+      toast({
+        variant: 'destructive',
+        title: 'Not Logged In',
+        description: 'You must be logged in to enroll in a course.',
+      });
+      return;
+    }
+    const enrollmentsCol = collection(firestore, 'enrollments');
+    addDocumentNonBlocking(enrollmentsCol, {
+      userId: user.id,
+      courseId: course.id,
+      teacherId: course.teacherId, // Denormalize teacherId
+      progress: 0,
+      completed: false,
+      enrolledAt: serverTimestamp(),
+    });
+    toast({ title: 'Enrolled!', description: `You have successfully enrolled in ${course.title}.` });
+  };
+  
+  const renderActionButton = () => {
+    if (action === 'enroll') {
+      if (isEnrolled) {
+        return (
+          <Button variant="outline" size="sm" disabled>
+            <Check className="mr-2 h-4 w-4" />
+            Enrolled
+          </Button>
+        );
+      }
+      return (
+        <Button onClick={handleEnroll} variant="default" size="sm">
+          <BookOpen className="mr-2 h-4 w-4" />
+          Enroll
+        </Button>
+      );
+    }
+    // Default 'view' action
+    return (
+       <Button asChild variant="secondary" size="sm">
+            <Link href={link}>
+              <BookOpen className="mr-2 h-4 w-4" />
+              View
+            </Link>
+        </Button>
+    )
+  }
 
   return (
     <Card className="flex h-full flex-col overflow-hidden transition-all hover:shadow-lg">
@@ -100,12 +156,7 @@ export function CourseCard({
               <span className="text-sm font-medium">{teacher.name}</span>
             </div>
           )}
-          <Button asChild variant={action === 'enroll' ? 'default' : 'secondary'} size="sm">
-            <Link href={link}>
-              <BookOpen className="mr-2 h-4 w-4" />
-              {action === 'enroll' ? 'Enroll' : 'View'}
-            </Link>
-          </Button>
+          {renderActionButton()}
         </div>
       </CardFooter>
     </Card>
