@@ -1,17 +1,20 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { CourseCard } from '@/components/course-card';
 import { useCollection, useUser } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import type { Course, Enrollment } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 
 export default function CourseCatalogPage() {
   const firestore = useFirestore();
   const { user } = useUser();
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Query for all approved courses
   const coursesQuery = useMemoFirebase(
@@ -37,6 +40,15 @@ export default function CourseCatalogPage() {
     return new Set(enrollments?.map(e => e.courseId) || []);
   }, [enrollments]);
 
+  const filteredCourses = useMemo(() => {
+    if (!courses) return [];
+    if (!searchTerm) return courses;
+    return courses.filter(course => 
+      course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      course.description.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [courses, searchTerm]);
+
   const isLoading = coursesLoading || enrollmentsLoading;
 
   return (
@@ -49,12 +61,21 @@ export default function CourseCatalogPage() {
           Explore new skills and enroll in courses to expand your knowledge.
         </p>
       </div>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+        <Input
+          placeholder="Search courses..."
+          className="pl-10"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {isLoading &&
           Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-96 w-full" />
           ))}
-        {courses?.map((course) => (
+        {!isLoading && filteredCourses.map((course) => (
           <CourseCard
             key={course.id}
             course={course}
@@ -64,6 +85,14 @@ export default function CourseCatalogPage() {
           />
         ))}
       </div>
+       {!isLoading && filteredCourses.length === 0 && (
+        <div className="text-center py-12 border-2 border-dashed rounded-lg col-span-full">
+            <h3 className="font-semibold">No Courses Found</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+                {searchTerm ? `No courses match your search for "${searchTerm}".` : 'There are no courses available at this time.'}
+            </p>
+        </div>
+      )}
     </div>
   );
 }
