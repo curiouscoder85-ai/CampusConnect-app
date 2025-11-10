@@ -25,19 +25,19 @@ export default function TeacherDashboardPage() {
 
   const enrollmentsQuery = useMemoFirebase(
     () => {
-        if (userLoading || coursesLoading || courseIds.length === 0) return null;
+        if (!user || coursesLoading || courseIds.length === 0) return null;
         return query(collection(firestore, 'enrollments'), where('courseId', 'in', courseIds));
     },
-    [firestore, userLoading, coursesLoading, courseIds]
+    [firestore, user, coursesLoading, courseIds]
   );
   const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
   
   const feedbackQuery = useMemoFirebase(
     () => {
-        if (userLoading || courseIds.length === 0) return null;
+        if (!user || courseIds.length === 0) return null;
         return query(collectionGroup(firestore, 'feedback'), where('courseId', 'in', courseIds))
     },
-    [firestore, userLoading, courseIds]
+    [firestore, user, courseIds]
   );
   const { data: courseFeedback, isLoading: feedbackLoading } = useCollection<Feedback>(feedbackQuery);
 
