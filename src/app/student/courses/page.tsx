@@ -2,15 +2,14 @@
 
 import { CourseCard } from '@/components/course-card';
 import { useCollection } from '@/firebase';
-import { useMemo } from 'react';
 import { collection, query, where } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useMemoFirebase } from '@/firebase';
 import type { Course } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function CourseCatalogPage() {
   const firestore = useFirestore();
-  const coursesQuery = useMemo(
+  const coursesQuery = useMemoFirebase(
     () =>
       query(collection(firestore, 'courses'), where('status', '==', 'approved')),
     [firestore]
