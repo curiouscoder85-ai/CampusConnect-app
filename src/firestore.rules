@@ -62,7 +62,7 @@ service cloud.firestore {
 
       // Allow users to manage their own chat history
       match /chatHistory/{messageId} {
-        allow read, write: if request.auth.uid == userId;
+        allow read, write: if isOwner();
       }
     }
 
@@ -251,3 +251,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
