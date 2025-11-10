@@ -20,28 +20,34 @@ import Link from 'next/link';
 import { Trophy, Award } from 'lucide-react';
 import { useDoc } from '@/firebase/firestore/use-doc';
 
-function ProgressRow({ enrollment }: { enrollment: Enrollment }) {
+function ProgressRow({ enrollment }: { enrollment?: Enrollment }) {
   const firestore = useFirestore();
+
+  // Check if enrollment and courseId exist before creating the reference
   const courseRef = useMemoFirebase(
-    () => doc(firestore, 'courses', enrollment.courseId),
-    [firestore, enrollment.courseId]
+    () => (enrollment?.courseId ? doc(firestore, 'courses', enrollment.courseId) : null),
+    [firestore, enrollment?.courseId]
   );
   const { data: course, isLoading } = useDoc<Course>(courseRef);
 
-  if (isLoading || !course) {
+  // Render skeleton if enrollment is missing or data is loading
+  if (isLoading || !enrollment || !course) {
     return (
       <TableRow>
         <TableCell>
           <Skeleton className="h-5 w-48" />
         </TableCell>
         <TableCell>
-          <Skeleton className="h-5 w-32" />
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-2 w-32" />
+            <Skeleton className="h-4 w-10" />
+          </div>
         </TableCell>
         <TableCell>
           <Skeleton className="h-5 w-24" />
         </TableCell>
-        <TableCell>
-          <Skeleton className="h-8 w-24" />
+        <TableCell className="text-right">
+          <Skeleton className="h-8 w-36" />
         </TableCell>
       </TableRow>
     );
@@ -124,7 +130,7 @@ export default function StudentProgressPage() {
           <TableBody>
             {isLoading ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <ProgressRow key={i} enrollment={{ id: i.toString() } as Enrollment} />
+                <ProgressRow key={i} />
               ))
             ) : enrollments && enrollments.length > 0 ? (
               enrollments.map((enrollment) => (
