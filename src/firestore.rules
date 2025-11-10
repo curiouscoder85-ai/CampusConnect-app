@@ -233,5 +233,15 @@ service cloud.firestore {
       allow update: if isOwner(userId);
       allow delete: if isOwner(userId);
     }
+    
+    // This rule allows admins or teachers to perform a collection group query on 'feedback'
+    match /{path=**}/feedback/{feedbackId} {
+      allow list: if isRole('admin') || isRole('teacher');
+    }
+
+    // This rule allows teachers to perform a collection group query on 'submissions'
+    match /{path=**}/submissions/{submissionId} {
+      allow list: if isRole('teacher');
+    }
   }
 }
