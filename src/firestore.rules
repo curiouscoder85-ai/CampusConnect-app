@@ -75,9 +75,8 @@ service cloud.firestore {
      * @principle Enforces document ownership for writes and allows public reads.
      */
     match /courses/{courseId} {
-      // Read rules: Public read access for approved courses, admins can list all
-      allow get: if true;
-      allow list: if isSignedIn();
+      // Read rules: Any signed-in user can read or list approved courses.
+      allow get, list: if isSignedIn();
 
       // Write rules: Owner-only writes, validate teacherId on create
       allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid && isRole('teacher');
