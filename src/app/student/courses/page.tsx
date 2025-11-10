@@ -10,8 +10,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function CourseCatalogPage() {
   const firestore = useFirestore();
   const coursesQuery = useMemoFirebase(
-    () =>
-      query(collection(firestore, 'courses'), where('status', '==', 'approved')),
+    () => {
+      if (!firestore) return null;
+      return query(collection(firestore, 'courses'), where('status', '==', 'approved'))
+    },
     [firestore]
   );
   const { data: courses, isLoading } = useCollection<Course>(coursesQuery);
