@@ -206,7 +206,7 @@ service cloud.firestore {
 
       // Write rules
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if (isExistingStudentEnrolled(resource.data.userId) || isExistingTeacherOfCourse(resource.data.courseId)) && request.resource.data.userId == resource.data.userId;
+      allow update: if isExistingStudentEnrolled(resource.data.userId) || isExistingTeacherOfCourse(resource.data.courseId);
       allow delete: if isExistingStudentEnrolled(resource.data.userId) || isExistingTeacherOfCourse(resource.data.courseId);
     }
 
@@ -269,3 +269,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
