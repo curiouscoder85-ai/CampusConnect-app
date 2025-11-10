@@ -51,7 +51,7 @@ export default function TeacherCoursesPage() {
             <CourseCard
               key={course.id}
               course={course}
-              link={`/teacher/courses/${course.id}/edit`}
+              link={`/teacher/courses/${course.id}`}
               action="view"
             />
           ))}
