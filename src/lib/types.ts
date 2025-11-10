@@ -1,3 +1,4 @@
+
 export type User = {
   id: string;
   name: string;
@@ -8,13 +9,20 @@ export type User = {
   lastName?: string;
 };
 
+export type Question = {
+  id: string;
+  text: string;
+  options: string[];
+  correctAnswer: number; // index of the correct option
+};
+
 export type ContentItem = {
   id: string;
   title: string;
   type: 'video' | 'reading' | 'quiz';
   url?: string; // For video
   content?: string; // For reading
-  questions?: any[]; // For quiz
+  questions?: Question[]; // For quiz
 };
 
 export type Module = {

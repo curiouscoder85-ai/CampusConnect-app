@@ -1,3 +1,4 @@
+
 'use client';
 
 import { notFound } from 'next/navigation';
@@ -12,22 +13,31 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { AiRecommendations } from '@/components/ai-recommendations';
-import { Book, CheckCircle, FileText, Video } from 'lucide-react';
+import { Book, CheckCircle, FileText, Video, PlayCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useDoc, useCollection, useUser } from '@/firebase';
 import { doc, collection, query, where } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import type { Course, Enrollment } from '@/lib/types';
+import type { Course, Enrollment, ContentItem } from '@/lib/types';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import React from 'react';
+import React, { useState } from 'react';
+import { ContentPlayer } from './_components/content-player';
 
-export default function StudentCoursePage({ params }: { params: Promise<{ id: string }> }) {
+const contentIcons: Record<ContentItem['type'], React.ReactNode> = {
+  video: <Video className="h-4 w-4 flex-shrink-0" />,
+  reading: <Book className="h-4 w-4 flex-shrink-0" />,
+  quiz: <FileText className="h-4 w-4 flex-shrink-0" />,
+};
+
+export default function StudentCoursePage({ params }: { params: { id: string } }) {
   const { id } = React.use(params);
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+
+  const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null);
 
   const courseRef = useMemoFirebase(() => doc(firestore, 'courses', id), [firestore, id]);
   const { data: course, isLoading: courseLoading } = useDoc<Course>(courseRef);
@@ -94,90 +104,110 @@ export default function StudentCoursePage({ params }: { params: Promise<{ id: st
   const recommendationInput = {
     courseName: course.title,
     studentProgress: `Completed ${enrollment.progress}% of the course.`,
-    learningMaterials: "Not available",
+    learningMaterials: course.modules?.map(m => m.title).join(', ') || "Not available",
   };
 
+  const defaultOpenAccordion = course.modules && course.modules.length > 0 ? [course.modules[0].id] : [];
+
   return (
-    <div className="mx-auto max-w-7xl">
-      <div className="mb-6">
-        <h1 className="font-headline text-4xl font-bold tracking-tight">{course.title}</h1>
-        <p className="mt-2 text-lg text-muted-foreground">{course.description}</p>
-      </div>
-
-      <div className="mb-6">
-        <div className="mb-2 flex justify-between font-medium">
-          <span>Overall Progress</span>
-          <span>{enrollment.progress}%</span>
-        </div>
-        <Progress value={enrollment.progress} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="font-headline">Course Content</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Accordion type="single" collapsible defaultValue={"m1"}>
-                        <AccordionItem value="m1">
-                            <AccordionTrigger className="font-semibold">Module 1: Introduction</AccordionTrigger>
-                            <AccordionContent>
-                                <ul className="space-y-2 pl-4">
-                                    <li className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground"><Video className="h-4 w-4" /><span>Welcome to the course</span></li>
-                                    <li className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground"><Book className="h-4 w-4" /><span>Course overview reading</span></li>
-                                    <li className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground"><FileText className="h-4 w-4" /><span>Introductory Quiz</span></li>
-                                </ul>
-                            </AccordionContent>
-                        </AccordionItem>
-                         <AccordionItem value="m2">
-                            <AccordionTrigger className="font-semibold">Module 2: Core Concepts</AccordionTrigger>
-                            <AccordionContent>
-                                <p className="text-muted-foreground">Content coming soon.</p>
-                            </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
-                </CardContent>
-            </Card>
+    <>
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-6">
+          <h1 className="font-headline text-4xl font-bold tracking-tight">{course.title}</h1>
+          <p className="mt-2 text-lg text-muted-foreground">{course.description}</p>
         </div>
 
-        <div className="space-y-8">
-            <AiRecommendations recommendationInput={recommendationInput} />
+        <div className="mb-6">
+          <div className="mb-2 flex justify-between font-medium">
+            <span>Overall Progress</span>
+            <span>{enrollment.progress}%</span>
+          </div>
+          <Progress value={enrollment.progress} />
+        </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle className="font-headline text-lg">Assignments</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div>
-                        <h4 className="font-semibold">Final Project</h4>
-                        <p className="text-sm text-muted-foreground mb-4">Apply what you've learned to build a final project.</p>
-                        <Button>Submit Assignment</Button>
-                    </div>
-                </CardContent>
-            </Card>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+              <Card>
+                  <CardHeader>
+                      <CardTitle className="font-headline">Course Content</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                      <Accordion type="multiple" defaultValue={defaultOpenAccordion}>
+                         {course.modules && course.modules.map(module => (
+                           <AccordionItem value={module.id} key={module.id}>
+                               <AccordionTrigger className="font-semibold">{module.title}</AccordionTrigger>
+                               <AccordionContent>
+                                   <ul className="space-y-1">
+                                       {module.content.map(item => (
+                                          <li key={item.id}>
+                                             <button 
+                                                onClick={() => setSelectedContent(item)}
+                                                className="w-full flex items-center justify-between gap-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 p-2 rounded-md transition-colors text-left"
+                                              >
+                                                <div className="flex items-center gap-3">
+                                                  {contentIcons[item.type]}
+                                                  <span>{item.title}</span>
+                                                </div>
+                                                <PlayCircle className="h-5 w-5 text-primary/50" />
+                                             </button>
+                                          </li>
+                                       ))}
+                                   </ul>
+                               </AccordionContent>
+                           </AccordionItem>
+                         ))}
+                      </Accordion>
+                  </CardContent>
+              </Card>
+          </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle className="font-headline text-lg">Provide Feedback</CardTitle>
-                    <CardDescription>Help the instructor improve this course.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <Textarea placeholder="Share your thoughts..." />
-                    <Button>Submit Feedback</Button>
-                </CardContent>
-            </Card>
+          <div className="space-y-8">
+              <AiRecommendations recommendationInput={recommendationInput} />
 
-            {enrollment.progress === 100 && (
-                <Button asChild size="lg" className="w-full bg-green-600 hover:bg-green-700">
-                    <Link href={`/student/courses/${course.id}/certificate`}>
-                        <CheckCircle className="mr-2 h-5 w-5" />
-                        Download Certificate
-                    </Link>
-                </Button>
-            )}
+              <Card>
+                  <CardHeader>
+                      <CardTitle className="font-headline text-lg">Assignments</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                      <div>
+                          <h4 className="font-semibold">Final Project</h4>
+                          <p className="text-sm text-muted-foreground mb-4">Apply what you've learned to build a final project.</p>
+                          <Button>Submit Assignment</Button>
+                      </div>
+                  </CardContent>
+              </Card>
+
+              <Card>
+                  <CardHeader>
+                      <CardTitle className="font-headline text-lg">Provide Feedback</CardTitle>
+                      <CardDescription>Help the instructor improve this course.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                      <Textarea placeholder="Share your thoughts..." />
+                      <Button>Submit Feedback</Button>
+                  </CardContent>
+              </Card>
+
+              {enrollment.progress === 100 && (
+                  <Button asChild size="lg" className="w-full bg-green-600 hover:bg-green-700">
+                      <Link href={`/student/courses/${course.id}/certificate`}>
+                          <CheckCircle className="mr-2 h-5 w-5" />
+                          Download Certificate
+                      </Link>
+                  </Button>
+              )}
+          </div>
         </div>
       </div>
-    </div>
+      
+      <ContentPlayer 
+        contentItem={selectedContent}
+        isOpen={!!selectedContent}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setSelectedContent(null);
+        }}
+        courseTitle={course.title}
+      />
+    </>
   );
 }
