@@ -263,9 +263,9 @@ service cloud.firestore {
       allow delete: if isExistingOwner(userId);
     }
     
-    // This rule allows admins to perform a collection group query on 'feedback'
+    // This rule allows admins or teachers to perform a collection group query on 'feedback'
     match /{path=**}/feedback/{feedbackId} {
-      allow list: if isRole('admin');
+      allow list: if isRole('admin') || isRole('teacher');
     }
   }
 }
