@@ -9,36 +9,35 @@ import { firebaseConfig } from '@/firebase/config';
 if (!admin.apps.length) {
   try {
     // In a deployed Google Cloud environment (like Firebase Studio),
-    // GOOGLE_APPLICATION_CREDENTIALS might be a path or a JSON string.
-    // The Admin SDK can often auto-discover credentials.
+    // the SDK can often auto-discover credentials.
     admin.initializeApp({
       projectId: firebaseConfig.projectId,
     });
   } catch (e: any) {
     console.warn(
-      'Default Firebase Admin SDK initialization failed, trying explicit credential check.',
+      'Default Firebase Admin SDK initialization failed. This is expected in some local environments. Trying explicit credential check.',
       e.message
     );
     // This explicit check is a fallback for local or misconfigured environments.
     try {
-       const serviceAccount = process.env.GOOGLE_APPLICATION_CREDENTIALS
-        ? JSON.parse(Buffer.from(process.env.GOOGLE_APPLICATION_CREDENTIALS, 'base64').toString('utf-8'))
-        : undefined;
-      
-       if (serviceAccount) {
+       const serviceAccountString = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+       
+       if (serviceAccountString) {
+         const serviceAccount = JSON.parse(Buffer.from(serviceAccountString, 'base64').toString('utf-8'));
          admin.initializeApp({
             credential: admin.credential.cert(serviceAccount),
             projectId: firebaseConfig.projectId,
          });
        } else if (!admin.apps.length) {
-         // Final fallback if no credentials found
-         console.error("Could not find Firebase Admin credentials. The 'getUserProfile' tool will not work.");
+         // Final fallback if no credentials found at all.
+         console.error("Could not find Firebase Admin credentials. The 'getUserProfile' tool will not work. Ensure GOOGLE_APPLICATION_CREDENTIALS is set.");
        }
-    } catch (e2) {
-      console.error('Fallback Firebase Admin SDK initialization failed:', e2);
+    } catch (e2: any) {
+      console.error('Fallback Firebase Admin SDK initialization failed:', e2.message);
     }
   }
 }
+
 
 let db: admin.firestore.Firestore;
 try {
