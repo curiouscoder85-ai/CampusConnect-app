@@ -27,9 +27,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, addDoc } from 'firebase/firestore';
 import type { Course } from '@/lib/types';
-import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { DeleteCourseAlert } from './delete-course-alert';
 import { Trash2, Eye } from 'lucide-react';
@@ -43,9 +43,10 @@ type CourseFormValues = z.infer<typeof formSchema>;
 
 interface CourseFormProps {
   course?: Course;
+  onCourseCreated?: (courseId: string) => void;
 }
 
-export function CourseForm({ course }: CourseFormProps) {
+export function CourseForm({ course, onCourseCreated }: CourseFormProps) {
   const router = useRouter();
   const firestore = useFirestore();
   const { user } = useUser();
@@ -80,22 +81,25 @@ export function CourseForm({ course }: CourseFormProps) {
         // Create new course
         const coursesCol = collection(firestore, 'courses');
         const randomImage = PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)];
-        const newDocPromise = addDocumentNonBlocking(coursesCol, {
+        
+        // Use await here to get the new document reference
+        const newDocRef = await addDoc(coursesCol, {
           ...data,
           teacherId: user.id,
           status: 'pending',
           image: randomImage.imageUrl,
           modules: [],
         });
+
         toast({
           title: 'Course Created',
           description: `"${data.title}" has been submitted for approval. You can now add modules.`,
         });
-        const newDoc = await newDocPromise;
-        if (newDoc) {
-          router.push(`/teacher/courses/${newDoc.id}/edit`);
+        
+        if (onCourseCreated) {
+          onCourseCreated(newDocRef.id);
         } else {
-          router.push('/teacher/courses');
+           router.push(`/teacher/courses/${newDocRef.id}/edit`);
         }
       }
     } catch (error: any) {
