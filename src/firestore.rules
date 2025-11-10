@@ -68,7 +68,7 @@ service cloud.firestore {
      * @description Controls access to course information. Only the teacher who created the course can modify it.
      * @path /courses/{courseId}
      * @allow (create) - Teacher with UID 'teacher_abc' can create a course with teacherId 'teacher_abc'.
-     * @allow (get, list) - Any user can read the course, signed in or not.
+     * @allow (get, list) - Any signed-in user can read the course.
      * @allow (update, delete) - Teacher with UID 'teacher_abc' can update/delete a course with teacherId 'teacher_abc'.
      * @deny (create) - User with UID 'student_xyz' cannot create a course.
      * @deny (update, delete) - User with UID 'student_xyz' cannot update/delete a course with teacherId 'teacher_abc'.
@@ -239,5 +239,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
