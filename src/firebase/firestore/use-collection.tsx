@@ -70,11 +70,11 @@ export function useCollection<T = any>(
   }, []);
 
   useEffect(() => {
+    // If the query is not ready, or we shouldn't listen, stop here.
     if (!memoizedTargetRefOrQuery || !options.listen) {
-      if (!options.listen) {
-        setData(null);
-      }
       setIsLoading(false);
+      setData(null); // Ensure data is cleared if query becomes null
+      setError(null);
       return;
     }
 
@@ -117,7 +117,7 @@ export function useCollection<T = any>(
   }, [memoizedTargetRefOrQuery, refetchToggle, options.listen]); 
 
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
-    throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
+    console.warn('The query/reference passed to useCollection was not memoized with useMemoFirebase. This can lead to performance issues and infinite loops.', memoizedTargetRefOrQuery);
   }
   return { data, isLoading, error, forceRefetch };
 }
