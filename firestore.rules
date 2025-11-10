@@ -55,7 +55,7 @@ service cloud.firestore {
       }
       
       allow list: if isRole('admin');
-      allow get: if isSignedIn(); // Allow any signed-in user to get their own doc to check their role
+      allow get: if isSignedIn(); // Allow any signed-in user to get any user doc to check roles.
       allow create: if isOwner() && request.resource.data.id == userId || isRole('admin');
       allow update: if isOwner() || isRole('admin');
       allow delete: if isRole('admin');
@@ -269,3 +269,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
