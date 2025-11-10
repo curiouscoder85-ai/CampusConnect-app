@@ -3,10 +3,33 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import * as admin from 'firebase-admin';
+import { firebaseConfig } from '@/firebase/config';
 
 // Initialize Firebase Admin SDK if not already initialized
 if (!admin.apps.length) {
-  admin.initializeApp();
+  // When running in a Google Cloud environment, the SDK can automatically
+  // find the service account credentials. For local development, especially
+  // in environments like Firebase Studio's web-based VS Code, we may need
+  // to provide the configuration explicitly.
+  try {
+    const serviceAccount = process.env.GOOGLE_APPLICATION_CREDENTIALS
+      ? JSON.parse(Buffer.from(process.env.GOOGLE_APPLICATION_CREDENTIALS, 'base64').toString('utf-8'))
+      : undefined;
+
+    admin.initializeApp({
+      credential: serviceAccount ? admin.credential.cert(serviceAccount) : admin.credential.applicationDefault(),
+      projectId: firebaseConfig.projectId,
+    });
+  } catch (e) {
+      console.error('Firebase Admin SDK initialization failed:', e);
+      // Fallback for environments where default credentials might work
+      // but the explicit credential load fails.
+      if (!admin.apps.length) {
+        admin.initializeApp({
+            projectId: firebaseConfig.projectId,
+        });
+      }
+  }
 }
 
 const db = admin.firestore();
