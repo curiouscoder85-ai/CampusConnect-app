@@ -240,10 +240,9 @@ service cloud.firestore {
       allow list: if isRole('admin') || isRole('teacher');
     }
     
-    // This rule allows teachers to perform a collection group query on 'submissions'
-    // and students to query for their own submissions.
+    // This rule allows teachers to list all submissions, and students to list their own.
     match /{path=**}/submissions/{submissionId} {
-      allow list: if (isRole('teacher') || request.query.get('userId') == request.auth.uid);
+      allow list: if (isRole('teacher') || (request.query.get('userId') == request.auth.uid));
     }
   }
 }
