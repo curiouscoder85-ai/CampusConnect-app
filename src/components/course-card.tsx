@@ -51,8 +51,8 @@ export function CourseCard({
 
   return (
     <Card className="flex h-full flex-col overflow-hidden transition-all hover:shadow-lg">
-      <CardHeader className="p-0">
-        <Link href={link}>
+      <Link href={link} className="p-0 block">
+        <CardHeader className="p-0">
           <div className="relative aspect-[3/2] w-full">
             <Image
               src={course.image || 'https://picsum.photos/seed/1/600/400'}
@@ -62,8 +62,8 @@ export function CourseCard({
               data-ai-hint="course thumbnail"
             />
           </div>
-        </Link>
-      </CardHeader>
+        </CardHeader>
+      </Link>
       <CardContent className="flex-1 p-4">
         {course.status === 'pending' && <Badge variant="secondary" className="mb-2">Pending</Badge>}
         <CardTitle className="font-headline mb-2 text-lg">
