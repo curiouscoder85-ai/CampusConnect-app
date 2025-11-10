@@ -75,14 +75,17 @@ service cloud.firestore {
      * @principle Enforces document ownership for writes and allows public reads.
      */
     match /courses/{courseId} {
-      // Read rules: Public read access for approved courses, admins can list all
-      allow get: if true;
+      function isTeacherOwner(courseId) {
+          return isSignedIn() && get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId == request.auth.uid;
+      }
+      // Read rules: Any signed-in user can read course data. Listing is also open to signed-in users.
+      allow get: if isSignedIn();
       allow list: if isSignedIn();
 
       // Write rules: Owner-only writes, validate teacherId on create
       allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid && isRole('teacher');
-      allow update: if request.auth.uid == resource.data.teacherId || isRole('admin');
-      allow delete: if request.auth.uid == resource.data.teacherId || isRole('admin');
+      allow update: if isTeacherOwner(courseId) || isRole('admin');
+      allow delete: if isTeacherOwner(courseId) || isRole('admin');
     }
 
     /**
@@ -151,7 +154,7 @@ service cloud.firestore {
       allow list: if true;
 
       // Write rules
-      allow create: if isSignedIn(); // Any signed-in user (student) can create feedback
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if isTeacherOwner(courseId); // Only teacher can update
       allow delete: if isTeacherOwner(courseId); // Only teacher can delete
     }
@@ -238,5 +241,12 @@ service cloud.firestore {
     match /{path=**}/feedback/{feedbackId} {
       allow list: if isRole('admin') || isRole('teacher');
     }
+    
+    // This rule allows teachers to perform a collection group query on 'submissions'
+    match /{path=**}/submissions/{submissionId} {
+      allow list: if isRole('teacher');
+    }
   }
 }
+
+    
