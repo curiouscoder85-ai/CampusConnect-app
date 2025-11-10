@@ -39,6 +39,7 @@ import { doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
+import { Textarea } from '@/components/ui/textarea';
 
 const contentIcons = {
   video: <Video className="h-4 w-4" />,
@@ -54,9 +55,16 @@ export function ModuleEditor({ course }: { course: Course }) {
   const [isContentDialogOpen, setContentDialogOpen] = React.useState(false);
   const [currentModuleId, setCurrentModuleId] = React.useState<string | null>(null);
   const [newModuleName, setNewModuleName] = React.useState('');
-  const [newContent, setNewContent] = React.useState({
+  const [newContent, setNewContent] = React.useState<{
+    title: string;
+    type: ContentItem['type'];
+    url?: string;
+    content?: string;
+  }>({
     title: '',
-    type: 'reading' as ContentItem['type'],
+    type: 'reading',
+    url: '',
+    content: '',
   });
 
   const handleAddModule = () => {
@@ -81,6 +89,8 @@ export function ModuleEditor({ course }: { course: Course }) {
       id: `c-${Date.now()}`,
       title: newContent.title,
       type: newContent.type,
+      url: newContent.type === 'video' ? newContent.url : undefined,
+      content: newContent.type === 'reading' ? newContent.content : undefined,
     };
 
     const updatedModules = modules.map((module) => {
@@ -92,7 +102,7 @@ export function ModuleEditor({ course }: { course: Course }) {
 
     setModules(updatedModules);
     updateCourseInFirestore(updatedModules);
-    setNewContent({ title: '', type: 'reading' });
+    setNewContent({ title: '', type: 'reading', url: '', content: '' });
     setContentDialogOpen(false);
     setCurrentModuleId(null);
   };
@@ -176,7 +186,12 @@ export function ModuleEditor({ course }: { course: Course }) {
       </Dialog>
       
       {/* Add Content Dialog */}
-      <Dialog open={isContentDialogOpen} onOpenChange={setContentDialogOpen}>
+      <Dialog open={isContentDialogOpen} onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          setNewContent({ title: '', type: 'reading', url: '', content: '' });
+        }
+        setContentDialogOpen(isOpen);
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add New Content</DialogTitle>
@@ -196,7 +211,7 @@ export function ModuleEditor({ course }: { course: Course }) {
                 <Label htmlFor="content-type">Content Type</Label>
                  <Select
                     value={newContent.type}
-                    onValueChange={(value: ContentItem['type']) => setNewContent({ ...newContent, type: value })}
+                    onValueChange={(value: ContentItem['type']) => setNewContent({ ...newContent, type: value, url: '', content: '' })}
                   >
                     <SelectTrigger id="content-type">
                       <SelectValue placeholder="Select content type" />
@@ -208,6 +223,29 @@ export function ModuleEditor({ course }: { course: Course }) {
                     </SelectContent>
                   </Select>
             </div>
+            {newContent.type === 'video' && (
+                 <div className="space-y-2">
+                    <Label htmlFor="content-url">Video URL</Label>
+                    <Input
+                      id="content-url"
+                      value={newContent.url}
+                      onChange={(e) => setNewContent({ ...newContent, url: e.target.value })}
+                      placeholder="https://www.youtube.com/watch?v=..."
+                    />
+                </div>
+            )}
+            {newContent.type === 'reading' && (
+                 <div className="space-y-2">
+                    <Label htmlFor="content-text">Reading Content</Label>
+                    <Textarea
+                      id="content-text"
+                      value={newContent.content}
+                      onChange={(e) => setNewContent({ ...newContent, content: e.target.value })}
+                      placeholder="Paste your article or reading material here..."
+                      className="min-h-[150px]"
+                    />
+                </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setContentDialogOpen(false)}>Cancel</Button>
