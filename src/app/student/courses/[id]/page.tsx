@@ -13,10 +13,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { AiRecommendations } from '@/components/ai-recommendations';
-import { Book, CheckCircle, FileText, Video, PlayCircle } from 'lucide-react';
+import { Book, CheckCircle, FileText, Video, PlayCircle, Star } from 'lucide-react';
 import Link from 'next/link';
 import { useDoc, useCollection, useUser } from '@/firebase';
-import { doc, collection, query, where } from 'firebase/firestore';
+import { doc, collection, query, where, serverTimestamp } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import type { Course, Enrollment, ContentItem } from '@/lib/types';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import React, { useState } from 'react';
 import { ContentPlayer } from './_components/content-player';
+import { cn } from '@/lib/utils';
 
 const contentIcons: Record<ContentItem['type'], React.ReactNode> = {
   video: <Video className="h-4 w-4 flex-shrink-0" />,
@@ -38,6 +39,10 @@ export default function StudentCoursePage({ params }: { params: { id: string } }
   const { toast } = useToast();
 
   const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null);
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+
 
   const courseRef = useMemoFirebase(() => doc(firestore, 'courses', id), [firestore, id]);
   const { data: course, isLoading: courseLoading } = useDoc<Course>(courseRef);
@@ -89,6 +94,38 @@ export default function StudentCoursePage({ params }: { params: { id: string } }
       completed: false
     });
     toast({ title: 'Enrolled!', description: `You have successfully enrolled in ${course.title}.` });
+  };
+  
+  const handleFeedbackSubmit = () => {
+    if (!user || !feedbackComment || feedbackRating === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Incomplete Feedback',
+        description: 'Please provide a rating and a comment.',
+      });
+      return;
+    }
+    
+    setIsSubmittingFeedback(true);
+    const feedbackCol = collection(firestore, `courses/${id}/feedback`);
+    
+    addDocumentNonBlocking(feedbackCol, {
+      userId: user.id,
+      courseId: id,
+      rating: feedbackRating,
+      comment: feedbackComment,
+      createdAt: serverTimestamp(),
+    }).then(() => {
+      toast({
+        title: 'Feedback Submitted',
+        description: 'Thank you for helping us improve this course!',
+      });
+      setFeedbackComment('');
+      setFeedbackRating(0);
+      setIsSubmittingFeedback(false);
+    }).catch(() => {
+        setIsSubmittingFeedback(false);
+    });
   };
 
   if (!enrollment) {
@@ -178,14 +215,35 @@ export default function StudentCoursePage({ params }: { params: { id: string } }
               </Card>
 
               <Card>
-                  <CardHeader>
-                      <CardTitle className="font-headline text-lg">Provide Feedback</CardTitle>
-                      <CardDescription>Help the instructor improve this course.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                      <Textarea placeholder="Share your thoughts..." />
-                      <Button>Submit Feedback</Button>
-                  </CardContent>
+                <CardHeader>
+                    <CardTitle className="font-headline text-lg">Provide Feedback</CardTitle>
+                    <CardDescription>Help the instructor improve this course.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center gap-1">
+                        <span className="text-sm text-muted-foreground">Rating:</span>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                            <button key={star} onClick={() => setFeedbackRating(star)}>
+                            <Star
+                                className={cn(
+                                'h-5 w-5 cursor-pointer transition-colors',
+                                star <= feedbackRating
+                                    ? 'text-amber-400 fill-amber-400'
+                                    : 'text-muted-foreground/50 hover:text-amber-400'
+                                )}
+                            />
+                            </button>
+                        ))}
+                    </div>
+                    <Textarea
+                        placeholder="Share your thoughts..."
+                        value={feedbackComment}
+                        onChange={(e) => setFeedbackComment(e.target.value)}
+                    />
+                    <Button onClick={handleFeedbackSubmit} disabled={isSubmittingFeedback}>
+                        {isSubmittingFeedback ? 'Submitting...' : 'Submit Feedback'}
+                    </Button>
+                </CardContent>
               </Card>
 
               {enrollment.progress === 100 && (
@@ -211,3 +269,5 @@ export default function StudentCoursePage({ params }: { params: { id: string } }
     </>
   );
 }
+
+    
