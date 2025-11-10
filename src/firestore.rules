@@ -203,7 +203,7 @@ service cloud.firestore {
 
       // Read rules
       allow get: if isSignedIn() && (resource.data.studentId == request.auth.uid || isTeacherOfCourse(courseId));
-      allow list: if isSignedIn() && isTeacherOfCourse(courseId);
+      allow list: if isSignedIn() && (resource.data.studentId == request.auth.uid || isTeacherOfCourse(courseId));
 
       // Write rules
       allow create: if isSignedIn() && request.auth.uid == request.resource.data.studentId;
@@ -240,9 +240,9 @@ service cloud.firestore {
       allow list: if isRole('admin') || isRole('teacher');
     }
     
-    // This rule allows teachers to list all submissions, and students to list their own.
+    // This rule allows teachers to list all submissions, and students to list their own submissions via a collection group query.
     match /{path=**}/submissions/{submissionId} {
-      allow list: if (isRole('teacher') || (request.query.get('userId') == request.auth.uid));
+       allow list: if isRole('teacher') || (request.query.get('userId') == request.auth.uid);
     }
   }
 }
