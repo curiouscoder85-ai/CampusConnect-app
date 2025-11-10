@@ -79,18 +79,18 @@ export function CourseForm({ course }: CourseFormProps) {
         // Create new course
         const coursesCol = collection(firestore, 'courses');
         const randomImage = PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)];
-        const newDoc = await addDocumentNonBlocking(coursesCol, {
+        const newDocPromise = addDocumentNonBlocking(coursesCol, {
           ...data,
           teacherId: user.id,
           status: 'pending',
           image: randomImage.imageUrl,
           modules: [],
-          assignments: [],
         });
         toast({
           title: 'Course Created',
-          description: `"${data.title}" has been submitted for approval.`,
+          description: `"${data.title}" has been submitted for approval. You can now add modules.`,
         });
+        const newDoc = await newDocPromise;
         if (newDoc) {
           router.push(`/teacher/courses/${newDoc.id}/edit`);
         } else {
@@ -190,7 +190,7 @@ export function CourseForm({ course }: CourseFormProps) {
                           : 'Creating...'
                         : course
                         ? 'Save Changes'
-                        : 'Create Course'}
+                        : 'Create Course & Add Modules'}
                     </Button>
                  </div>
               </div>
