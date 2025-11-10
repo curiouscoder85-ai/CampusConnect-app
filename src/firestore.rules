@@ -242,7 +242,9 @@ service cloud.firestore {
     
     // This rule allows teachers to list all submissions, and students to list their own submissions via a collection group query.
     match /{path=**}/submissions/{submissionId} {
-       allow list: if isRole('teacher') || (request.query.get('userId') == request.auth.uid);
+       allow list: if isRole('teacher') || request.query.where.userId == request.auth.uid;
     }
   }
 }
+
+    
