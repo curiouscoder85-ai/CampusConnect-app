@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { DashboardStatCard } from '@/components/dashboard-stat-card';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, collectionGroup } from 'firebase/firestore';
 import type { Course, Enrollment, Feedback } from '@/lib/types';
 import { BookCopy, Users, Star } from 'lucide-react';
 
