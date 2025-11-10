@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -31,7 +32,7 @@ import type { Course } from '@/lib/types';
 import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { DeleteCourseAlert } from './delete-course-alert';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Eye } from 'lucide-react';
 
 const formSchema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters long'),
@@ -167,7 +168,7 @@ export function CourseForm({ course }: CourseFormProps) {
                 )}
               />
               <div className="flex justify-between items-center gap-2">
-                 <div>
+                 <div className="flex gap-2">
                   {course && (
                      <Button
                        type="button"
@@ -176,6 +177,14 @@ export function CourseForm({ course }: CourseFormProps) {
                      >
                        <Trash2 className="mr-2 h-4 w-4" />
                        Delete Course
+                     </Button>
+                   )}
+                   {course && (
+                     <Button type="button" variant="secondary" asChild>
+                       <Link href={`/student/courses/${course.id}`} target="_blank">
+                        <Eye className="mr-2 h-4 w-4" />
+                        View as Student
+                       </Link>
                      </Button>
                    )}
                  </div>
