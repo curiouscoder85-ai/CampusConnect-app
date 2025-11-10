@@ -7,10 +7,11 @@ import { CourseForm } from '../../_components/course-form';
 import type { Course } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ModuleEditor } from '../../_components/module-editor';
+import React from 'react';
 
-export default function EditCoursePage({ params }: { params: { id: string } }) {
+export default function EditCoursePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = React.use(params);
   const firestore = useFirestore();
-  const { id } = params;
   const courseRef = useMemoFirebase(() => doc(firestore, 'courses', id), [firestore, id]);
   const { data: course, isLoading } = useDoc<Course>(courseRef);
 

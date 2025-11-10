@@ -21,13 +21,15 @@ import type { Course, Enrollment } from '@/lib/types';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import React from 'react';
 
-export default function StudentCoursePage({ params }: { params: { id: string } }) {
+export default function StudentCoursePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = React.use(params);
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
 
-  const courseRef = useMemoFirebase(() => doc(firestore, 'courses', params.id), [firestore, params.id]);
+  const courseRef = useMemoFirebase(() => doc(firestore, 'courses', id), [firestore, id]);
   const { data: course, isLoading: courseLoading } = useDoc<Course>(courseRef);
 
   const enrollmentsQuery = useMemoFirebase(
@@ -36,10 +38,10 @@ export default function StudentCoursePage({ params }: { params: { id: string } }
         ? query(
             collection(firestore, 'enrollments'),
             where('userId', '==', user.id),
-            where('courseId', '==', params.id)
+            where('courseId', '==', id)
           )
         : null,
-    [firestore, user, params.id]
+    [firestore, user, id]
   );
   const { data: enrollments, isLoading: enrollmentLoading } = useCollection<Enrollment>(enrollmentsQuery);
   const enrollment = enrollments?.[0];
