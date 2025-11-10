@@ -25,8 +25,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser } from '@/firebase';
-import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
+import { useFirestore, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
 import type { Course } from '@/lib/types';
 import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -98,11 +98,12 @@ export function CourseForm({ course }: CourseFormProps) {
         }
       }
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'An unexpected error occurred',
-        description: error.message || 'Please try again later.',
+      const contextualError = new FirestorePermissionError({
+        path: course ? `courses/${course.id}` : 'courses',
+        operation: course ? 'update' : 'create',
+        requestResourceData: data,
       });
+      errorEmitter.emit('permission-error', contextualError);
     }
   };
 
