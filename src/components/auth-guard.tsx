@@ -3,7 +3,6 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from './auth-provider';
-import { Skeleton } from './ui/skeleton';
 
 type AuthGuardProps = {
   children: React.ReactNode;
@@ -29,13 +28,15 @@ export default function AuthGuard({ children, role }: AuthGuardProps) {
   if (loading || !user || user.role !== role) {
     // Show a loading state or a blank screen while checking auth
     return (
-      <div className="flex h-screen w-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-            <Skeleton className="h-12 w-12 rounded-full" />
-            <div className="space-y-2">
-                <Skeleton className="h-4 w-[250px]" />
-                <Skeleton className="h-4 w-[200px]" />
-            </div>
+      <div className="flex h-screen w-screen items-center justify-center bg-background">
+        <div className="cube-loader">
+          <div className="cube-top"></div>
+          <div className="cube-wrapper">
+            <span style={{ '--i': 0 } as React.CSSProperties} className="cube-span"></span>
+            <span style={{ '--i': 1 } as React.CSSProperties} className="cube-span"></span>
+            <span style={{ '--i': 2 } as React.CSSProperties} className="cube-span"></span>
+            <span style={{ '--i': 3 } as React.CSSProperties} className="cube-span"></span>
+          </div>
         </div>
       </div>
     );
