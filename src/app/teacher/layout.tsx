@@ -2,6 +2,7 @@ import AuthGuard from '@/components/auth-guard';
 import { Header } from '@/components/header';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { TeacherSidebar } from './_components/teacher-sidebar';
+import { Chatbot } from '@/components/chatbot';
 
 export default function TeacherLayout({
   children,
@@ -19,6 +20,7 @@ export default function TeacherLayout({
               <main className="flex-1 p-4 md:p-8">{children}</main>
             </SidebarInset>
           </div>
+          <Chatbot />
         </div>
       </SidebarProvider>
     </AuthGuard>
