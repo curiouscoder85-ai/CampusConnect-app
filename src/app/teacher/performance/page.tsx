@@ -10,19 +10,17 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useUser, useFirestore } from '@/firebase';
-import { collection, query, where, getDocs, collectionGroup } from 'firebase/firestore';
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { collection, query, where, getDocs, collectionGroup, doc, updateDoc } from 'firebase/firestore';
 import type { Submission, Course, User } from '@/lib/types';
 import { useDoc } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
-import { doc } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 interface SubmissionWithCourse extends Submission {
     courseTitle: string;
@@ -74,6 +72,7 @@ function SubmissionRow({ submission }: { submission: SubmissionWithCourse }) {
         setIsSaving(true);
         const submissionRef = doc(firestore, `submissions/${submission.id}`);
         const newGrade = grade === '' ? null : parseInt(grade, 10);
+        const gradeData = { grade: newGrade };
 
         if (newGrade !== null && (isNaN(newGrade) || newGrade < 0 || newGrade > 100)) {
             toast({
@@ -85,12 +84,21 @@ function SubmissionRow({ submission }: { submission: SubmissionWithCourse }) {
             return;
         }
 
-        updateDocumentNonBlocking(submissionRef, { grade: newGrade });
-        toast({
-            title: 'Grade Saved',
-            description: `The grade has been updated.`,
+        updateDoc(submissionRef, gradeData).then(() => {
+            toast({
+                title: 'Grade Saved',
+                description: `The grade has been updated.`,
+            });
+        }).catch(() => {
+             const contextualError = new FirestorePermissionError({
+                path: submissionRef.path,
+                operation: 'update',
+                requestResourceData: gradeData
+            });
+            errorEmitter.emit('permission-error', contextualError);
+        }).finally(() => {
+            setIsSaving(false);
         });
-        setIsSaving(false);
     };
 
     return (
@@ -103,7 +111,7 @@ function SubmissionRow({ submission }: { submission: SubmissionWithCourse }) {
                 <div className="text-sm text-muted-foreground">{submission.assignmentTitle}</div>
             </TableCell>
             <TableCell className="text-muted-foreground">
-                {format(submission.submittedAt.toDate(), 'PP')}
+                {submission.submittedAt ? format(submission.submittedAt.toDate(), 'PP') : 'N/A'}
             </TableCell>
             <TableCell>
                 {submission.grade !== null && submission.grade !== undefined ? (
@@ -149,13 +157,16 @@ export default function TeacherPerformancePage() {
       const courseIds = courses.map(c => c.id);
 
       if (courseIds.length > 0) {
-        const subsQuery = query(collection(firestore, 'submissions'), where('courseId', 'in', courseIds));
+        const subsQuery = query(collectionGroup(firestore, 'submissions'), where('courseId', 'in', courseIds));
         const subsSnapshot = await getDocs(subsQuery);
         
         const submissionsData = subsSnapshot.docs.map(doc => {
             const data = doc.data() as Submission;
             const course = courses.find(c => c.id === data.courseId);
-            const assignment = course?.assignments?.find(a => a.id === data.assignmentId);
+            // This is brittle, depends on the path format
+            const assignmentId = doc.ref.parent.parent?.id;
+            const assignment = course?.modules?.flatMap(m => m.content).find(c => c.id === assignmentId);
+
 
             return {
                 ...data,
