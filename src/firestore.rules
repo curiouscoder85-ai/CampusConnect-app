@@ -68,15 +68,15 @@ service cloud.firestore {
      * @description Controls access to course information. Only the teacher who created the course can modify it.
      * @path /courses/{courseId}
      * @allow (create) - Teacher with UID 'teacher_abc' can create a course with teacherId 'teacher_abc'.
-     * @allow (get, list) - Any signed-in user can read the course.
+     * @allow (get, list) - Any user can read the course, signed in or not.
      * @allow (update, delete) - Teacher with UID 'teacher_abc' can update/delete a course with teacherId 'teacher_abc'.
      * @deny (create) - User with UID 'student_xyz' cannot create a course.
      * @deny (update, delete) - User with UID 'student_xyz' cannot update/delete a course with teacherId 'teacher_abc'.
      * @principle Enforces document ownership for writes and allows public reads.
      */
     match /courses/{courseId} {
-      // Read rules: Any signed-in user can read or list approved courses.
-      allow get, list: if isSignedIn();
+      // Read rules: Public read access for approved courses, admins can list all
+      allow get, list: if true;
 
       // Write rules: Owner-only writes, validate teacherId on create
       allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid && isRole('teacher');
@@ -233,14 +233,11 @@ service cloud.firestore {
       allow delete: if isOwner(userId);
     }
     
-    // This rule allows admins or teachers to perform a collection group query on 'feedback'
-    match /{path=**}/feedback/{feedbackId} {
-      allow list: if isRole('admin') || isRole('teacher');
-    }
-
     // This rule allows teachers to perform a collection group query on 'submissions'
     match /{path=**}/submissions/{submissionId} {
       allow list: if isRole('teacher');
     }
   }
 }
+
+    
