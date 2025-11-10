@@ -12,7 +12,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, query, where, getDocs, collectionGroup, doc, updateDoc } from 'firebase/firestore';
-import type { Submission, Course, User } from '@/lib/types';
+import type { Submission, Course, User, Enrollment } from '@/lib/types';
 import { useCollection, useDoc } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -21,11 +21,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-
-interface SubmissionWithCourse extends Submission {
-    courseTitle: string;
-    assignmentTitle: string;
-}
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { StudentProgressTable } from './_components/student-progress-table';
 
 const getInitials = (name: string) => {
     if (!name) return '??';
@@ -73,8 +70,6 @@ function SubmissionRow({ submission }: { submission: Submission }) {
 
     const handleSaveGrade = () => {
         setIsSaving(true);
-        // This path is incorrect as submissions are nested, but we don't have the full path.
-        // Let's assume a top-level 'submissions' collection for now for grading to work.
         const submissionRef = doc(firestore, 'courses', submission.courseId, 'assignments', submission.assignmentId, 'submissions', submission.id);
 
         const newGrade = grade === '' ? null : parseInt(grade, 10);
@@ -161,50 +156,78 @@ export default function TeacherPerformancePage() {
     return query(collectionGroup(firestore, 'submissions'), where('teacherId', '==', user.id));
   }, [user, firestore]);
   
-  const {data: submissions, isLoading} = useCollection<Submission>(submissionsQuery);
+  const teacherCoursesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(firestore, 'courses'), where('teacherId', '==', user.id));
+  }, [user, firestore]);
+
+  const { data: teacherCourses, isLoading: coursesLoading } = useCollection<Course>(teacherCoursesQuery);
+
+  const courseIds = React.useMemo(() => teacherCourses?.map(c => c.id) || [], [teacherCourses]);
+
+  const enrollmentsQuery = useMemoFirebase(() => {
+    if (courseIds.length === 0) return null;
+    return query(collection(firestore, 'enrollments'), where('courseId', 'in', courseIds));
+  }, [firestore, courseIds]);
+
+  const {data: submissions, isLoading: submissionsLoading} = useCollection<Submission>(submissionsQuery);
+  const {data: enrollments, isLoading: enrollmentsLoading} = useCollection<Enrollment>(enrollmentsQuery);
+
+  const isLoading = submissionsLoading || enrollmentsLoading || coursesLoading;
   
   return (
     <div className="flex flex-col gap-8">
       <div>
         <h1 className="font-headline text-3xl font-bold tracking-tight">Student Performance</h1>
         <p className="text-muted-foreground">
-          View and grade student submissions for your courses.
+          Track student progress and grade their submissions for your courses.
         </p>
       </div>
 
-       {isLoading ? (
-          <div className="space-y-4">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-          </div>
-        ) : submissions && submissions.length > 0 ? (
-            <div className="rounded-lg border">
-                <Table>
-                    <TableHeader>
-                    <TableRow>
-                        <TableHead>Student</TableHead>
-                        <TableHead>Assignment</TableHead>
-                        <TableHead>Submitted On</TableHead>
-                        <TableHead>Current Grade</TableHead>
-                        <TableHead>Action</TableHead>
-                    </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {submissions.map((sub) => (
-                           <SubmissionRow key={sub.id} submission={sub} />
-                        ))}
-                    </TableBody>
-                </Table>
+      <Tabs defaultValue="progress">
+        <TabsList>
+            <TabsTrigger value="progress">Overall Progress</TabsTrigger>
+            <TabsTrigger value="submissions">Grade Submissions</TabsTrigger>
+        </TabsList>
+        <TabsContent value="progress" className="mt-6">
+            <StudentProgressTable enrollments={enrollments || []} isLoading={isLoading} />
+        </TabsContent>
+        <TabsContent value="submissions" className="mt-6">
+            {isLoading ? (
+            <div className="space-y-4">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
             </div>
-        ) : (
-            <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                <h3 className="font-semibold">No Submissions Yet</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                    Students have not submitted any assignments for your courses.
-                </p>
-            </div>
-      )}
+            ) : submissions && submissions.length > 0 ? (
+                <div className="rounded-lg border">
+                    <Table>
+                        <TableHeader>
+                        <TableRow>
+                            <TableHead>Student</TableHead>
+                            <TableHead>Assignment</TableHead>
+                            <TableHead>Submitted On</TableHead>
+                            <TableHead>Current Grade</TableHead>
+                            <TableHead>Action</TableHead>
+                        </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {submissions.map((sub) => (
+                            <SubmissionRow key={sub.id} submission={sub} />
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            ) : (
+                <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                    <h3 className="font-semibold">No Submissions Yet</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        Students have not submitted any assignments for your courses.
+                    </p>
+                </div>
+            )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
