@@ -166,9 +166,9 @@ export default function TeacherPerformancePage() {
   const courseIds = React.useMemo(() => teacherCourses?.map(c => c.id) || [], [teacherCourses]);
 
   const enrollmentsQuery = useMemoFirebase(() => {
-    if (courseIds.length === 0) return null;
+    if (coursesLoading || courseIds.length === 0) return null;
     return query(collection(firestore, 'enrollments'), where('courseId', 'in', courseIds));
-  }, [firestore, courseIds]);
+  }, [firestore, courseIds, coursesLoading]);
 
   const {data: submissions, isLoading: submissionsLoading} = useCollection<Submission>(submissionsQuery);
   const {data: enrollments, isLoading: enrollmentsLoading} = useCollection<Enrollment>(enrollmentsQuery);
