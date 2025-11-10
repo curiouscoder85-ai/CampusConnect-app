@@ -42,18 +42,13 @@ export function Chatbot() {
 
     const userMessage: Message = { text: inputValue, role: 'user', id: nanoid() };
     
-    const currentMessages = [...messages, userMessage];
-    setMessages(currentMessages);
+    setMessages((prev) => [...prev, userMessage]);
     setInputValue('');
     setIsBotLoading(true);
 
-    const historyForPrompt = currentMessages.map(m => ({ role: m.role, content: m.text }));
-
     const responseText = await curiousBotAction({ 
       message: inputValue, 
-      userId: user.id, 
-      // The history is now built from local state for the current session
-      history: historyForPrompt.slice(0, -1) 
+      userId: user.id,
     });
     
     const botMessage: Message = { text: responseText, role: 'bot', id: nanoid() };
