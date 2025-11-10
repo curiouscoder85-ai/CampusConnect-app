@@ -32,15 +32,16 @@ import { Button } from '@/components/ui/button';
 import { useFirestore } from '@/firebase/provider';
 import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { getAuth } from 'firebase/auth';
-import { initializeFirebase, setDocumentNonBlocking, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { initializeApp, getApps, deleteApp } from 'firebase/app';
+import { firebaseConfig } from '@/firebase/config';
+import { setDocumentNonBlocking, errorEmitter, FirestorePermissionError } from '@/firebase';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name is required'),
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  role: z.enum(['teacher', 'student']),
+  role: z.enum(['teacher', 'student', 'admin']),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -50,10 +51,6 @@ interface AddUserDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   onUserAdded: () => void;
 }
-
-// We need a secondary app to create users while admin is logged in.
-const secondaryApp = initializeFirebase().firebaseApp;
-const secondaryAuth = getAuth(secondaryApp);
 
 export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDialogProps) {
   const firestore = useFirestore();
@@ -69,6 +66,18 @@ export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDial
   });
 
   const onSubmit = async (data: FormValues) => {
+    // Create a secondary app for user creation to avoid redirecting the admin
+    const secondaryAppName = 'secondary-auth-app';
+    let secondaryApp;
+    
+    const existingApp = getApps().find(app => app.name === secondaryAppName);
+    if (existingApp) {
+      secondaryApp = existingApp;
+    } else {
+      secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
+    }
+    const secondaryAuth = getAuth(secondaryApp);
+
     try {
       const userCredential = await createUserWithEmailAndPassword(secondaryAuth, data.email, data.password);
       const { uid } = userCredential.user;
@@ -103,16 +112,27 @@ export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDial
           description: error.message || 'Could not create user authentication entry.',
         });
       } else {
-        // This is not an auth error, so we assume it's a Firestore permission error
         const contextualError = new FirestorePermissionError({
-          path: `users/${secondaryAuth.currentUser?.uid || 'unknown'}`,
+          path: `users/new-user`,
           operation: 'create',
           requestResourceData: data,
         });
         errorEmitter.emit('permission-error', contextualError);
       }
+    } finally {
+        // Clean up the secondary app
+        if(secondaryAuth.currentUser) {
+           await secondaryAuth.signOut();
+        }
+        await deleteApp(secondaryApp);
     }
   };
+  
+  React.useEffect(() => {
+    if (!isOpen) {
+      form.reset();
+    }
+  }, [isOpen, form]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -179,6 +199,7 @@ export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDial
                     <SelectContent>
                       <SelectItem value="student">Student</SelectItem>
                       <SelectItem value="teacher">Teacher</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -199,5 +220,3 @@ export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDial
     </Dialog>
   );
 }
-
-    
