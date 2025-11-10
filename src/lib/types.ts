@@ -78,3 +78,9 @@ export type Assignment = {
     description: string;
 };
 
+export type Message = {
+  id: string;
+  text: string;
+  role: 'user' | 'bot';
+  createdAt: any; // Using `any` for Firebase Timestamp and client-side Date
+};

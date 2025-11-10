@@ -7,16 +7,14 @@ import { Input } from './ui/input';
 import { Bot, Send, X, Loader2, Sparkle } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { curiousBotAction } from '@/app/actions';
 import { nanoid } from 'nanoid';
-
-type Message = {
-  id: string;
-  text: string;
-  sender: 'user' | 'bot';
-};
+import type { Message } from '@/lib/types';
+import { collection, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { Skeleton } from './ui/skeleton';
 
 const getInitials = (name: string) => {
   if (!name) return '??';
@@ -31,30 +29,69 @@ export function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isBotLoading, setIsBotLoading] = useState(false);
   const { user } = useUser();
+  const firestore = useFirestore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const chatHistoryQuery = useMemoFirebase(
+    () =>
+      user
+        ? query(
+            collection(firestore, 'users', user.id, 'chatHistory'),
+            orderBy('createdAt', 'asc'),
+            limit(50)
+          )
+        : null,
+    [firestore, user]
+  );
+  
+  const { data: initialMessages, isLoading: isHistoryLoading } = useCollection<Message>(chatHistoryQuery, { listen: isOpen });
+
+  useEffect(() => {
+    if (initialMessages) {
+      setMessages(initialMessages);
+    }
+  }, [initialMessages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(scrollToBottom, [messages]);
-
+  
   const handleSendMessage = async () => {
-    if (inputValue.trim() === '' || isLoading || !user) return;
+    if (inputValue.trim() === '' || isBotLoading || !user) return;
 
-    const userMessage: Message = { id: nanoid(), text: inputValue, sender: 'user' };
-    setMessages((prev) => [...prev, userMessage]);
+    const userMessage: Omit<Message, 'id' | 'createdAt'> = { text: inputValue, role: 'user' };
+    
+    const historyForPrompt = messages.map(m => ({ role: m.role, content: m.text }));
+
+    setMessages((prev) => [...prev, { ...userMessage, id: nanoid(), createdAt: new Date() }]);
     setInputValue('');
-    setIsLoading(true);
+    setIsBotLoading(true);
 
-    const responseText = await curiousBotAction({ message: inputValue, userId: user.id });
+    // Save user message to Firestore
+    const chatHistoryCol = collection(firestore, 'users', user.id, 'chatHistory');
+    addDocumentNonBlocking(chatHistoryCol, { ...userMessage, createdAt: serverTimestamp() });
 
-    const botMessage: Message = { id: nanoid(), text: responseText, sender: 'bot' };
-    setMessages((prev) => [...prev, botMessage]);
-    setIsLoading(false);
+    const responseText = await curiousBotAction({ message: inputValue, userId: user.id, history: historyForPrompt });
+    
+    const botMessage: Omit<Message, 'id' | 'createdAt'> = { text: responseText, role: 'bot' };
+    
+    // Save bot message to Firestore
+    addDocumentNonBlocking(chatHistoryCol, { ...botMessage, createdAt: serverTimestamp() });
+
+    setMessages((prev) => [...prev, { ...botMessage, id: nanoid(), createdAt: new Date() }]);
+    setIsBotLoading(false);
   };
+  
+   useEffect(() => {
+    // Reset messages when chat is closed
+    if (!isOpen) {
+      setMessages([]);
+    }
+  }, [isOpen]);
 
   return (
     <>
@@ -82,21 +119,33 @@ export function Chatbot() {
                   </Button>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {messages.length === 0 && (
+                   {isHistoryLoading && (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 justify-end">
+                        <Skeleton className="h-8 w-32 rounded-lg" />
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <Skeleton className="h-8 w-40 rounded-lg" />
+                      </div>
+                    </div>
+                  )}
+                  {!isHistoryLoading && messages.length === 0 && (
                      <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
                         <Bot className="h-12 w-12 mb-4" />
                         <p className="text-sm">Hi! I'm CuriousBot. Ask me about coding, personal growth, or anything else you're curious about!</p>
                      </div>
                   )}
-                  {messages.map((message) => (
+                  {!isHistoryLoading && messages.map((message) => (
                     <div
                       key={message.id}
                       className={cn(
                         'flex items-start gap-3',
-                        message.sender === 'user' && 'justify-end'
+                        message.role === 'user' && 'justify-end'
                       )}
                     >
-                      {message.sender === 'bot' && (
+                      {message.role === 'bot' && (
                         <Avatar className="h-8 w-8 border-2 border-primary/50">
                             <div className="h-full w-full bg-primary/20 flex items-center justify-center">
                                 <Bot className="h-5 w-5 text-primary" />
@@ -106,14 +155,14 @@ export function Chatbot() {
                       <div
                         className={cn(
                           'max-w-[75%] rounded-lg px-3 py-2 text-sm',
-                          message.sender === 'user'
+                          message.role === 'user'
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-muted'
                         )}
                       >
                         {message.text}
                       </div>
-                      {message.sender === 'user' && user && (
+                      {message.role === 'user' && user && (
                         <Avatar className="h-8 w-8">
                           <AvatarImage src={user.avatar} />
                           <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
@@ -121,7 +170,7 @@ export function Chatbot() {
                       )}
                     </div>
                   ))}
-                   {isLoading && (
+                   {isBotLoading && (
                     <div className="flex items-start gap-3">
                         <Avatar className="h-8 w-8 border-2 border-primary/50">
                              <div className="h-full w-full bg-primary/20 flex items-center justify-center">
@@ -148,7 +197,7 @@ export function Chatbot() {
                       value={inputValue}
                       onChange={(e) => setInputValue(e.target.value)}
                     />
-                    <Button type="submit" size="icon" disabled={isLoading}>
+                    <Button type="submit" size="icon" disabled={isBotLoading}>
                       <Send className="h-4 w-4" />
                     </Button>
                   </form>

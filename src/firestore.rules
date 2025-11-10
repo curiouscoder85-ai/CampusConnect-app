@@ -59,6 +59,11 @@ service cloud.firestore {
       allow create: if isOwner() && request.resource.data.id == userId || isRole('admin');
       allow update: if isOwner() || isRole('admin');
       allow delete: if isRole('admin');
+
+      // Allow users to manage their own chat history
+      match /chatHistory/{messageId} {
+        allow read, write: if isOwner();
+      }
     }
 
     /**
@@ -242,7 +247,7 @@ service cloud.firestore {
     
     // This rule allows teachers to list all submissions, and students to list their own submissions via a collection group query.
     match /{path=**}/submissions/{submissionId} {
-       allow list: if isRole('teacher') || request.query.resource.data.userId == request.auth.uid;
+       allow list: if isRole('teacher') || request.query.where[0][2] == request.auth.uid;
     }
   }
 }

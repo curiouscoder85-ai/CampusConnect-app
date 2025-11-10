@@ -11,9 +11,15 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { getUserProfile } from '../tools/user-tools';
 
+const MessageSchema = z.object({
+  role: z.enum(['user', 'model']),
+  content: z.string(),
+});
+
 const CuriousBotInputSchema = z.object({
   message: z.string().describe("The user's message to the chatbot."),
   userId: z.string().describe('The ID of the user sending the message.'),
+  history: z.array(MessageSchema).optional().describe('The conversation history.'),
 });
 export type CuriousBotInput = z.infer<typeof CuriousBotInputSchema>;
 
@@ -47,6 +53,17 @@ Keep your responses short, positive, and to the point.
 
 Your personality: Friendly, wise, and motivating.
 Your goal: Help users grow  — learning new skills while building strength in mind, body, and attitude.
+
+{{#if history}}
+Conversation History:
+{{#each history}}
+  {{#if (eq role 'user')}}
+User: {{{content}}}
+  {{else}}
+You: {{{content}}}
+  {{/if}}
+{{/each}}
+{{/if}}
 
 User message: {{{message}}}
 `,
