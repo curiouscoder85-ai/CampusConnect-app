@@ -30,10 +30,11 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useFirestore } from '@/firebase/provider';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useAuth } from '@/components/auth-provider';
 
 const formSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -52,6 +53,8 @@ interface EditUserDialogProps {
 export function EditUserDialog({ user, isOpen, onOpenChange }: EditUserDialogProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { user: currentUser } = useAuth(); // Get the currently logged-in user
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -93,9 +96,9 @@ export function EditUserDialog({ user, isOpen, onOpenChange }: EditUserDialogPro
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit User</DialogTitle>
+          <DialogTitle>Edit Profile</DialogTitle>
           <DialogDescription>
-            Make changes to the user's profile. Email cannot be changed.
+            Make changes to the profile. Email cannot be changed.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -126,28 +129,30 @@ export function EditUserDialog({ user, isOpen, onOpenChange }: EditUserDialogPro
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a role" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="student">Student</SelectItem>
-                      <SelectItem value="teacher">Teacher</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {currentUser?.role === 'admin' && (
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a role" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="student">Student</SelectItem>
+                        <SelectItem value="teacher">Teacher</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
