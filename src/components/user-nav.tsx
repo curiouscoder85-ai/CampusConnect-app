@@ -36,12 +36,7 @@ export function UserNav() {
   };
 
   const handleSettingsSelect = () => {
-    if (user.role === 'admin' || user.role === 'teacher') {
-      setIsSettingsDialogOpen(true);
-    } else {
-      // For students, settings opens their profile
-      setIsProfileDialogOpen(true);
-    }
+    setIsSettingsDialogOpen(true);
   };
 
   return (
