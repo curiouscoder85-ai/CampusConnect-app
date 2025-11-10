@@ -3,9 +3,9 @@
 import { useMemo } from 'react';
 import { DashboardStatCard } from '@/components/dashboard-stat-card';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, collectionGroup } from 'firebase/firestore';
-import type { Course, Enrollment, Feedback } from '@/lib/types';
-import { BookCopy, Users, Star } from 'lucide-react';
+import { collection, query, where } from 'firebase/firestore';
+import type { Course, Enrollment } from '@/lib/types';
+import { BookCopy, Users } from 'lucide-react';
 
 export default function TeacherDashboardPage() {
   const { user, isUserLoading: userLoading } = useUser();
@@ -27,27 +27,10 @@ export default function TeacherDashboardPage() {
     [firestore, userLoading, coursesLoading, courseIds]
   );
   const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
-  
-  const feedbackQuery = useMemoFirebase(
-    () => {
-        if (userLoading || coursesLoading || courseIds.length === 0) return null;
-        return query(collectionGroup(firestore, 'feedback'), where('courseId', 'in', courseIds))
-    },
-    [firestore, userLoading, coursesLoading, courseIds]
-  );
-  const { data: courseFeedback, isLoading: feedbackLoading } = useCollection<Feedback>(feedbackQuery);
-
 
   const totalEnrollments = enrollments?.length ?? 0;
   
-  const averageRating =
-    courseFeedback && courseFeedback.length > 0
-      ? (
-          courseFeedback.reduce((acc, f) => acc + f.rating, 0) / courseFeedback.length
-        ).toFixed(1)
-      : 'N/A';
-
-  const isLoading = userLoading || coursesLoading || enrollmentsLoading || feedbackLoading;
+  const isLoading = userLoading || coursesLoading || enrollmentsLoading;
 
   return (
     <div className="flex flex-col gap-8">
@@ -65,13 +48,6 @@ export default function TeacherDashboardPage() {
           value={String(totalEnrollments)}
           icon={Users}
           description="Across all your courses"
-          isLoading={isLoading}
-        />
-        <DashboardStatCard
-          title="Average Rating"
-          value={String(averageRating)}
-          icon={Star}
-          description="Average feedback rating from students"
           isLoading={isLoading}
         />
       </div>
