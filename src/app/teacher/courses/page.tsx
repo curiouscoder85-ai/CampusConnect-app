@@ -14,7 +14,10 @@ export default function TeacherCoursesPage() {
   const firestore = useFirestore();
 
   const coursesQuery = useMemoFirebase(
-    () => (user ? query(collection(firestore, 'courses'), where('teacherId', '==', user.id)) : null),
+    () => {
+        if (!user) return null;
+        return query(collection(firestore, 'courses'), where('teacherId', '==', user.id))
+    },
     [firestore, user]
   );
   const { data: courses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
