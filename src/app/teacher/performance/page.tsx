@@ -150,22 +150,22 @@ function SubmissionRow({ submission }: { submission: Submission }) {
 
 export default function TeacherPerformancePage() {
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
 
   const submissionsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user || !firestore) return null;
     return query(collectionGroup(firestore, 'submissions'), where('teacherId', '==', user.id));
   }, [user, firestore]);
   
   const enrollmentsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user || !firestore) return null;
     return query(collection(firestore, 'enrollments'), where('teacherId', '==', user.id));
   }, [user, firestore]);
 
   const {data: submissions, isLoading: submissionsLoading} = useCollection<Submission>(submissionsQuery);
   const {data: enrollments, isLoading: enrollmentsLoading} = useCollection<Enrollment>(enrollmentsQuery);
 
-  const isLoading = submissionsLoading || enrollmentsLoading;
+  const isLoading = isUserLoading || submissionsLoading || enrollmentsLoading;
   
   return (
     <div className="flex flex-col gap-8">
