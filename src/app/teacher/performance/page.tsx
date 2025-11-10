@@ -166,9 +166,12 @@ export default function TeacherPerformancePage() {
   const courseIds = React.useMemo(() => teacherCourses?.map(c => c.id) || [], [teacherCourses]);
 
   const enrollmentsQuery = useMemoFirebase(() => {
-    if (coursesLoading || courseIds.length === 0) return null;
+    // This guard is critical. It ensures the query is only created when all dependencies are ready.
+    if (coursesLoading || !teacherCourses || courseIds.length === 0) {
+      return null;
+    }
     return query(collection(firestore, 'enrollments'), where('courseId', 'in', courseIds));
-  }, [firestore, courseIds, coursesLoading]);
+  }, [firestore, courseIds, coursesLoading, teacherCourses]);
 
   const {data: submissions, isLoading: submissionsLoading} = useCollection<Submission>(submissionsQuery);
   const {data: enrollments, isLoading: enrollmentsLoading} = useCollection<Enrollment>(enrollmentsQuery);
