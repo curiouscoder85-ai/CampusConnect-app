@@ -23,8 +23,8 @@ const contentIcons: Record<ContentItem['type'], React.ReactNode> = {
   quiz: <HelpCircle className="h-4 w-4" />,
 };
 
-export default function TeacherCourseDetailsPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function TeacherCourseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = React.use(params);
   const firestore = useFirestore();
   const router = useRouter();
 
