@@ -61,7 +61,7 @@ export function useCollection<T = any>(
   type StateDataType = ResultItemType[] | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true); // Start as true
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   const [refetchToggle, setRefetchToggle] = useState(false);
 
@@ -116,6 +116,7 @@ export function useCollection<T = any>(
 
     // Cleanup function to unsubscribe from the listener
     return () => unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memoizedTargetRefOrQuery, refetchToggle, options.listen]);
 
   return { data, isLoading, error, forceRefetch };
