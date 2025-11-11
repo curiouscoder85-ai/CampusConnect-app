@@ -8,7 +8,7 @@
  * - /courses/{courseId}: Stores course information. Only the teacher who created the course can modify it.
  * - /users/{userId}/certificates/{certificateId}: Stores certificates earned by users. Only the user can access their own certificates.
  * - /courses/{courseId}/feedback/{feedbackId}: Stores feedback for each course. Only the teacher who created the course can manage feedback. Students can create feedback.
- * - /enrollments/{enrollmentId}: Stores enrollment records. Only the student or the teacher of the course can access.
+ * - /enrollments/{enrollmentId}: Stores enrollment records. Only the student or the teacher of the course can access. Student can update their own progress.
  * - /submissions/{submissionId}: Stores submissions for assignments. Only the student who created it or teacher of the course can access. Teacher can grade.
  * - /users/{userId}/recommendations/{recommendationId}: Stores AI-powered content recommendations for each student. Only the user can access their own recommendations.
  *
@@ -100,7 +100,7 @@ service cloud.firestore {
       allow get: if isStudentEnrolled(resource.data.userId) || isTeacherOfCourse(resource.data.courseId);
       allow list: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if isStudentEnrolled(resource.data.userId) || isTeacherOfCourse(resource.data.courseId);
+      allow update: if (isStudentEnrolled(resource.data.userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['progress', 'completedContent'])) || isTeacherOfCourse(resource.data.courseId);
       allow delete: if isStudentEnrolled(resource.data.userId) || isTeacherOfCourse(resource.data.courseId);
     }
 

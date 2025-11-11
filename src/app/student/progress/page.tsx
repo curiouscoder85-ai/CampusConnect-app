@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, collectionGroup } from 'firebase/firestore';
+import { collection, query, where, doc } from 'firebase/firestore';
 import type { Enrollment, Course, Submission } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -136,15 +136,15 @@ export default function StudentProgressPage() {
   const firestore = useFirestore();
 
   const enrollmentsQuery = useMemoFirebase(
-    () => (user ? query(collection(firestore, 'enrollments'), where('userId', '==', user.id)) : null),
-    [firestore, user]
+    () => (user?.id ? query(collection(firestore, 'enrollments'), where('userId', '==', user.id)) : null),
+    [firestore, user?.id]
   );
   const { data: enrollments, isLoading: enrollmentsLoading } =
     useCollection<Enrollment>(enrollmentsQuery);
 
   const submissionsQuery = useMemoFirebase(
-    () => (user ? query(collectionGroup(firestore, 'submissions'), where('userId', '==', user.id)) : null),
-    [firestore, user]
+    () => (user?.id ? query(collection(firestore, 'submissions'), where('userId', '==', user.id)) : null),
+    [firestore, user?.id]
   );
   const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
 
