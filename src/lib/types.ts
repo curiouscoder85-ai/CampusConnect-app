@@ -22,7 +22,7 @@ export type ContentItem = {
   title: string;
   type: 'video' | 'reading' | 'quiz';
   url?: string; // For video
-  content?: string; // For reading
+  content?: string; // For reading or assignment content
   questions?: Question[]; // For quiz
 };
 

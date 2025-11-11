@@ -7,10 +7,9 @@
  * - /users/{userId}: Stores user profiles. Only the user can read/write their own profile. Admins can read all profiles.
  * - /courses/{courseId}: Stores course information. Only the teacher who created the course can modify it.
  * - /users/{userId}/certificates/{certificateId}: Stores certificates earned by users. Only the user can access their own certificates.
- * - /courses/{courseId}/assignments/{assignmentId}: Stores assignments for each course. Only the teacher who created the course can modify assignments.
  * - /courses/{courseId}/feedback/{feedbackId}: Stores feedback for each course. Only the teacher who created the course can manage feedback. Students can create feedback.
  * - /enrollments/{enrollmentId}: Stores enrollment records. Only the student or the teacher of the course can access.
- * - /courses/{courseId}/assignments/{assignmentId}/submissions/{submissionId}: Stores submissions for each assignment. Only the student who created the submission can modify it. The teacher can read all submissions for a course.
+ * - /submissions/{submissionId}: Stores submissions for assignments. Only the student who created it or teacher of the course can access. Teacher can grade.
  * - /users/{userId}/recommendations/{recommendationId}: Stores AI-powered content recommendations for each student. Only the user can access their own recommendations.
  *
  * Key Security Decisions:
@@ -21,11 +20,11 @@
  *
  * Denormalization for Authorization:
  * - Course documents have a `teacherId` field to identify the owner.
- * - Assignments and Feedback inherit the `teacherId` from the parent Course.
- * - Enrollment documents store both `courseId` and `studentId` for easier authorization checks.
+ * - Enrollment, Submission, and Feedback documents store `courseId`, `studentId`, and `teacherId`.
  *
  * Structural Segregation:
  * - User-specific data (e.g., certificates, recommendations) is stored under `/users/{userId}` to ensure private access.
+ * - Submissions are now a root collection for easier querying by teachers.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -40,15 +39,6 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    /**
-     * @description Controls access to user profiles. Only the user can read and write their own profile. Admins can read all profiles.
-     * @path /users/{userId}
-     * @allow (create) - User with UID 'user_abc' can create their profile at /users/user_abc.
-     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete their profile at /users/user_abc.
-     * @allow (get, list) - An admin can read or list all user profiles.
-     * @deny (create, update, delete) - User with UID 'user_xyz' cannot create, update, or delete the profile at /users/user_abc.
-     * @principle Enforces document ownership for writes and restricts access to a user's own data tree, with an exception for admins.
-     */
     match /users/{userId} {
       function isOwner() {
         return isSignedIn() && request.auth.uid == userId;
@@ -61,112 +51,43 @@ service cloud.firestore {
       allow delete: if isRole('admin');
     }
 
-    /**
-     * @description Controls access to course information. Only the teacher who created the course can modify it.
-     * @path /courses/{courseId}
-     * @allow (create) - Teacher with UID 'teacher_abc' can create a course with teacherId 'teacher_abc'.
-     * @allow (get, list) - Any signed-in user can read the course.
-     * @allow (update, delete) - Teacher with UID 'teacher_abc' can update/delete a course with teacherId 'teacher_abc'.
-     * @deny (create) - User with UID 'student_xyz' cannot create a course.
-     * @deny (update, delete) - User with UID 'student_xyz' cannot update/delete a course with teacherId 'teacher_abc'.
-     * @principle Enforces document ownership for writes and allows public reads.
-     */
     match /courses/{courseId} {
       function isTeacherOwner() {
           return isSignedIn() && get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId == request.auth.uid;
       }
 
-      // Read rules: Public read access for approved courses, admins can list all
       allow get: if true;
       allow list: if true;
 
-      // Write rules: Owner-only writes, validate teacherId on create
       allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid && isRole('teacher');
       allow update: if (isTeacherOwner() || isRole('admin'));
       allow delete: if (isTeacherOwner() || isRole('admin'));
     }
 
-    /**
-     * @description Controls access to certificates earned by users. Only the user can access their own certificates.
-     * @path /users/{userId}/certificates/{certificateId}
-     * @allow (create) - User with UID 'user_abc' can create a certificate under /users/user_abc/certificates/certificate_123.
-     * @allow (get, list) - User with UID 'user_abc' can read/list certificates under /users/user_abc.
-     * @allow (update, delete) - User with UID 'user_abc' can update/delete their certificate under /users/user_abc/certificates/certificate_123.
-     * @deny (create, update, delete) - User with UID 'user_xyz' cannot create/update/delete certificates under /users/user_abc.
-     * @principle Enforces document ownership for all operations within the user's data tree.
-     */
     match /users/{userId}/certificates/{certificateId} {
       function isOwner(ownerId) {
         return isSignedIn() && request.auth.uid == ownerId;
       }
 
-      // Read rules
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-
-      // Write rules
       allow create: if isOwner(userId);
       allow update: if isOwner(userId);
       allow delete: if isOwner(userId);
     }
 
-    /**
-     * @description Controls access to assignments for each course. Only the teacher who created the course can modify assignments.
-     * @path /courses/{courseId}/assignments/{assignmentId}
-     * @allow (create) - Teacher with UID 'teacher_abc' can create an assignment under /courses/course_123.
-     * @allow (get, list) - Any signed-in user can read/list assignments under /courses/course_123.
-     * @allow (update, delete) - Teacher with UID 'teacher_abc' can update/delete an assignment under /courses/course_123.
-     * @deny (create, update, delete) - User with UID 'student_xyz' cannot create/update/delete assignments under /courses/course_123.
-     * @principle Enforces document ownership for writes and allows public reads.
-     */
-    match /courses/{courseId}/assignments/{assignmentId} {
-      function isTeacherOwner(courseId) {
-          return isSignedIn() && get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId == request.auth.uid;
-      }
-
-      // Read rules
-      allow get, list: if true;
-
-      // Write rules
-      allow create: if isTeacherOwner(courseId);
-      allow update: if isTeacherOwner(courseId);
-      allow delete: if isTeacherOwner(courseId);
-    }
-
-    /**
-     * @description Controls access to feedback for each course. Only the teacher who created the course can manage feedback, and students can create feedback.
-     * @path /courses/{courseId}/feedback/{feedbackId}
-     * @allow (create) - Student with UID 'student_xyz' can create feedback under /courses/course_123.
-     * @allow (get, list) - Any signed-in user can read/list feedback under /courses/course_123.
-     * @allow (update, delete) - Teacher with UID 'teacher_abc' can update/delete feedback under /courses/course_123.
-     * @deny (update, delete) - User with UID 'student_xyz' cannot update/delete feedback created by other students or managed by the teacher under /courses/course_123.
-     * @principle Allows students to create feedback, public reads, and teacher-only management.
-     */
     match /courses/{courseId}/feedback/{feedbackId} {
       function isTeacherOwner(courseId) {
           return isSignedIn() && get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId == request.auth.uid;
       }
 
-      // Read rules
       allow get: if true;
       allow list: if true;
-
-      // Write rules
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if isTeacherOwner(courseId); // Only teacher can update
-      allow delete: if isTeacherOwner(courseId); // Only teacher can delete
+      allow update: if isTeacherOwner(courseId);
+      allow delete: if isTeacherOwner(courseId);
     }
 
-    /**
-     * @description Controls access to enrollment records. Only the enrolled student or the course teacher can access.
-     * @path /enrollments/{enrollmentId}
-     * @allow (create) - Any authenticated user can create an enrollment.
-     * @allow (get) - The enrolled student (userId) or the teacher of the course (teacherId) can get the enrollment.
-     * @allow (list) - A student can list their own enrollments. Admins can list all. Teachers can list enrollments for their courses.
-     * @allow (update, delete) - The enrolled student (userId) or the teacher of the course (teacherId) can update/delete the enrollment.
-     * @deny (get, list, update, delete) - Any other user cannot access the enrollment.
-     * @principle Grants access to enrolled student or course teacher.
-     */
     match /enrollments/{enrollmentId} {
       function isStudentEnrolled(studentId) {
           return isSignedIn() && request.auth.uid == studentId;
@@ -176,75 +97,43 @@ service cloud.firestore {
         return isSignedIn() && get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId == request.auth.uid;
       }
 
-      // Read rules
       allow get: if isStudentEnrolled(resource.data.userId) || isTeacherOfCourse(resource.data.courseId);
       allow list: if isSignedIn();
-
-      // Write rules
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if isStudentEnrolled(resource.data.userId) || isTeacherOfCourse(resource.data.courseId);
       allow delete: if isStudentEnrolled(resource.data.userId) || isTeacherOfCourse(resource.data.courseId);
     }
 
-    /**
-     * @description Controls access to submissions for each assignment. Only the student who created the submission can modify it. The teacher can read all submissions for a course.
-     * @path /courses/{courseId}/assignments/{assignmentId}/submissions/{submissionId}
-     * @allow (create) - Student can create submission
-     * @allow (get) - Student owner or teacher of course can access submission
-     * @allow (list) - Student owner or teacher of course can list submissions
-     * @allow (update) - Only Student owner can update
-     * @allow (delete) - Only Student owner can delete
-     * @principle Enforces student ownership for submissions, with teacher read access.
-     */
-    match /courses/{courseId}/assignments/{assignmentId}/submissions/{submissionId} {
-      function isTeacherOfCourse(courseId) {
-        return isSignedIn() && get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId == request.auth.uid;
-      }
+    match /submissions/{submissionId} {
+        function isTeacherOfCourse(courseId) {
+            return isSignedIn() && get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId == request.auth.uid;
+        }
 
-      // Read rules
-      allow get: if isSignedIn() && (resource.data.studentId == request.auth.uid || isTeacherOfCourse(courseId));
-      allow list: if isSignedIn() && (resource.data.studentId == request.auth.uid || isTeacherOfCourse(courseId));
-
-      // Write rules
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.studentId;
-      allow update: if isSignedIn() && resource.data.studentId == request.auth.uid;
-      allow delete: if isSignedIn() && resource.data.studentId == request.auth.uid;
+        function isStudentOwner() {
+            return isSignedIn() && resource.data.userId == request.auth.uid;
+        }
+        
+        allow get: if isStudentOwner() || isTeacherOfCourse(resource.data.courseId);
+        allow list: if isRole('teacher');
+        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        allow update: if isTeacherOfCourse(resource.data.courseId); // Allow teacher to update (e.g., for grading)
+        allow delete: if isStudentOwner() || isTeacherOfCourse(resource.data.courseId);
     }
 
-    /**
-     * @description Controls access to AI-powered content recommendations for each student. Only the user can access their own recommendations.
-     * @path /users/{userId}/recommendations/{recommendationId}
-     * @allow (create) - User with UID 'user_abc' can create a recommendation under /users/user_abc/recommendations/recommendation_123.
-     * @allow (get, list) - User with UID 'user_abc' can read/list recommendations under /users/user_abc.
-     * @allow (update, delete) - User with UID 'user_abc' can update/delete their recommendation under /users/user_abc/recommendations/recommendation_123.
-     * @deny (create, update, delete) - User with UID 'user_xyz' cannot create/update/delete recommendations under /users/user_abc.
-     * @principle Enforces document ownership for all operations within the user's data tree.
-     */
     match /users/{userId}/recommendations/{recommendationId} {
       function isOwner(ownerId) {
         return isSignedIn() && request.auth.uid == ownerId;
       }
 
-      // Read rules
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-
-      // Write rules
       allow create: if isOwner(userId);
       allow update: if isOwner(userId);
       allow delete: if isOwner(userId);
     }
     
-    // This rule allows admins or teachers to perform a collection group query on 'feedback'
     match /{path=**}/feedback/{feedbackId} {
       allow list: if isRole('admin') || isRole('teacher');
     }
-    
-    // This rule allows teachers to list all submissions, and students to list their own submissions via a collection group query.
-    match /{path=**}/submissions/{submissionId} {
-       allow list: if isRole('teacher') || request.query.where[0][2] == request.auth.uid;
-    }
   }
 }
-
-    

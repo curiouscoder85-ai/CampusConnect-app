@@ -62,22 +62,18 @@ export default function StudentCoursePage({ params }: { params: { id: string } }
   const { data: enrollments, isLoading: enrollmentLoading } = useCollection<Enrollment>(enrollmentsQuery);
   const enrollment = enrollments?.[0];
 
-  const handleSubmitAssignment = (assignmentId: string) => {
+  const handleSubmitAssignment = (assignment: ContentItem) => {
     if (!user || !course) return;
 
-    // In a real app, you'd have a form to collect submission content.
-    // For this demo, we'll use placeholder content.
-    const submissionContent = `This is a submission for assignment ${assignmentId}.`;
+    const submissionContent = assignment.content || `This is a submission for ${assignment.title}.`;
     
-    // Note: The path to the submissions sub-collection needs the assignmentId.
-    // This assumes assignments are top-level content items in a module.
-    const submissionsCol = collection(firestore, 'courses', course.id, 'assignments', assignmentId, 'submissions');
+    const submissionsCol = collection(firestore, 'submissions');
     
     addDocumentNonBlocking(submissionsCol, {
       userId: user.id,
       courseId: course.id,
-      assignmentId: assignmentId,
-      teacherId: course.teacherId, // Denormalize teacherId for easier queries
+      assignmentId: assignment.id,
+      teacherId: course.teacherId, 
       content: submissionContent,
       submittedAt: serverTimestamp(),
       grade: null,
@@ -244,7 +240,7 @@ export default function StudentCoursePage({ params }: { params: { id: string } }
                             <div key={assignment.id}>
                                 <h4 className="font-semibold">{assignment.title}</h4>
                                 <p className="text-sm text-muted-foreground mb-4">Apply what you've learned.</p>
-                                <Button onClick={() => handleSubmitAssignment(assignment.id)}>Submit Assignment</Button>
+                                <Button onClick={() => handleSubmitAssignment(assignment)}>Submit Assignment</Button>
                             </div>
                           ))}
                         </div>
