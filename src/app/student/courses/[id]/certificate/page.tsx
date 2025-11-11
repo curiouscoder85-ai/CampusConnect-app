@@ -31,15 +31,22 @@ export default function CertificatePage({ params }: { params: Promise<{ id: stri
 
   const isLoading = isUserLoading || courseLoading || teacherLoading;
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     const input = certificateRef.current;
     if (!input) return;
 
-    html2canvas(input, {
-      scale: 2, // Higher scale for better quality
-      useCORS: true,
-      backgroundColor: null,
-    }).then((canvas) => {
+    // Temporarily force light theme for canvas rendering
+    const originalClasses = input.className;
+    input.className = `${originalClasses} light bg-background`;
+
+
+    try {
+      const canvas = await html2canvas(input, {
+        scale: 2, // Higher scale for better quality
+        useCORS: true,
+        backgroundColor: '#ffffff', // Explicitly set a white background
+      });
+      
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
         orientation: 'landscape',
@@ -48,8 +55,13 @@ export default function CertificatePage({ params }: { params: Promise<{ id: stri
       });
       pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
       pdf.save(`Certificate-${course?.title.replace(/\s+/g, '-')}.pdf`);
-    });
+
+    } finally {
+        // Restore original classes
+        input.className = originalClasses;
+    }
   };
+
 
   if (isLoading) {
     return <CertificateSkeleton />;
