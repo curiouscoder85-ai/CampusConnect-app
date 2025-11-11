@@ -21,10 +21,11 @@ export default function TeacherDashboardPage() {
 
   const enrollmentsQuery = useMemoFirebase(
     () => {
-        if (userLoading || coursesLoading || courseIds.length === 0) return null;
+        // This is the critical fix: Do not run the query until the courseIds array has been populated.
+        if (!firestore || courseIds.length === 0) return null;
         return query(collection(firestore, 'enrollments'), where('courseId', 'in', courseIds));
     },
-    [firestore, userLoading, coursesLoading, courseIds]
+    [firestore, courseIds]
   );
   const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 

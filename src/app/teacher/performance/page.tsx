@@ -153,14 +153,16 @@ export default function TeacherPerformancePage() {
   const { user, isUserLoading } = useUser();
 
   const submissionsQuery = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
+    // This is the critical fix: Do not run the query until the user id is available.
+    if (!user?.id || !firestore) return null;
     return query(collectionGroup(firestore, 'submissions'), where('teacherId', '==', user.id));
-  }, [user, firestore]);
+  }, [user?.id, firestore]);
   
   const enrollmentsQuery = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
+    // This is the critical fix: Do not run the query until the user id is available.
+    if (!user?.id || !firestore) return null;
     return query(collection(firestore, 'enrollments'), where('teacherId', '==', user.id));
-  }, [user, firestore]);
+  }, [user?.id, firestore]);
 
   const {data: submissions, isLoading: submissionsLoading} = useCollection<Submission>(submissionsQuery);
   const {data: enrollments, isLoading: enrollmentsLoading} = useCollection<Enrollment>(enrollmentsQuery);
