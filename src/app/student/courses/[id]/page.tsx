@@ -14,16 +14,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { AiRecommendations } from '@/components/ai-recommendations';
-import { Book, CheckCircle, FileText, Video, PlayCircle, Star } from 'lucide-react';
+import { Book, CheckCircle, FileText, Video, PlayCircle, Star, Check } from 'lucide-react';
 import Link from 'next/link';
 import { useDoc, useCollection, useUser } from '@/firebase';
-import { doc, collection, query, where, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, query, where, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import type { Course, Enrollment, ContentItem } from '@/lib/types';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ContentPlayer } from './_components/content-player';
 import { cn } from '@/lib/utils';
 
@@ -59,8 +59,27 @@ export default function StudentCoursePage({ params }: { params: { id: string } }
         : null,
     [firestore, user, id]
   );
-  const { data: enrollments, isLoading: enrollmentLoading } = useCollection<Enrollment>(enrollmentsQuery);
+  const { data: enrollments, isLoading: enrollmentLoading, forceRefetch } = useCollection<Enrollment>(enrollmentsQuery);
   const enrollment = enrollments?.[0];
+
+  const totalContentItems = useMemo(() => {
+    return course?.modules?.reduce((acc, module) => acc + module.content.length, 0) || 0;
+  }, [course]);
+
+  const handleMarkAsComplete = (contentId: string) => {
+    if (!enrollment || !course || totalContentItems === 0) return;
+
+    const enrollmentRef = doc(firestore, 'enrollments', enrollment.id);
+    const completedContent = [...(enrollment.completedContent || []), contentId];
+    const newProgress = Math.round((completedContent.length / totalContentItems) * 100);
+
+    updateDocumentNonBlocking(enrollmentRef, {
+        completedContent: arrayUnion(contentId),
+        progress: newProgress,
+    });
+
+    forceRefetch(); // Force a refetch to update UI optimistically
+  };
 
   const handleSubmitAssignment = (assignment: ContentItem) => {
     if (!user || !course) return;
@@ -117,6 +136,7 @@ export default function StudentCoursePage({ params }: { params: { id: string } }
       courseId: course.id,
       teacherId: course.teacherId, // Denormalize teacherId
       progress: 0,
+      completedContent: [],
       completed: false
     });
     toast({ title: 'Enrolled!', description: `You have successfully enrolled in ${course.title}.` });
@@ -203,20 +223,35 @@ export default function StudentCoursePage({ params }: { params: { id: string } }
                                <AccordionTrigger className="font-semibold">{module.title}</AccordionTrigger>
                                <AccordionContent>
                                    <ul className="space-y-1">
-                                       {module.content.map(item => (
-                                          <li key={item.id}>
-                                             <button 
-                                                onClick={() => setSelectedContent(item)}
-                                                className="w-full flex items-center justify-between gap-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 p-2 rounded-md transition-colors text-left"
-                                              >
-                                                <div className="flex items-center gap-3">
+                                       {module.content.map(item => {
+                                          const isCompleted = enrollment.completedContent?.includes(item.id);
+                                          return (
+                                            <li key={item.id} className="flex items-center justify-between gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors group">
+                                               <button 
+                                                  onClick={() => setSelectedContent(item)}
+                                                  className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
+                                                >
                                                   {contentIcons[item.type]}
                                                   <span>{item.title}</span>
-                                                </div>
-                                                <PlayCircle className="h-5 w-5 text-primary/50" />
-                                             </button>
-                                          </li>
-                                       ))}
+                                               </button>
+                                               <div className="flex items-center gap-2">
+                                                 <button onClick={() => setSelectedContent(item)} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <PlayCircle className="h-5 w-5 text-primary/70" />
+                                                 </button>
+                                                 {isCompleted ? (
+                                                    <Button variant="ghost" size="sm" disabled className="text-green-600 h-auto px-2 py-1">
+                                                        <Check className="mr-2 h-4 w-4" />
+                                                        Completed
+                                                    </Button>
+                                                 ) : (
+                                                    <Button variant="outline" size="sm" onClick={() => handleMarkAsComplete(item.id)} className="h-auto px-2 py-1">
+                                                        Mark as Complete
+                                                    </Button>
+                                                 )}
+                                               </div>
+                                            </li>
+                                          )
+                                       })}
                                    </ul>
                                </AccordionContent>
                            </AccordionItem>

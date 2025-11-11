@@ -50,6 +50,7 @@ export type Enrollment = {
   teacherId: string; // Denormalized for querying
   progress: number;
   completed: boolean;
+  completedContent: string[]; // Array of completed content item IDs
 };
 
 export type Submission = {
