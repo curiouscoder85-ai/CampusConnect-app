@@ -14,6 +14,7 @@ export default function TeacherSubmissionsPage() {
   const submissionsQuery = useMemoFirebase(
     () => {
         if (!user) return null;
+        // Ensure the query uses the 'teacherId' field to comply with security rules
         return query(collection(firestore, 'submissions'), where('teacherId', '==', user.id))
     },
     [firestore, user]
