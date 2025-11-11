@@ -89,8 +89,8 @@ export function ModuleEditor({ course }: { course: Course }) {
       id: `c-${Date.now()}`,
       title: newContent.title,
       type: newContent.type,
-      url: newContent.type === 'video' ? newContent.url : undefined,
-      content: newContent.type === 'reading' ? newContent.content : undefined,
+      ...(newContent.type === 'video' && { url: newContent.url }),
+      ...(newContent.type === 'reading' && { content: newContent.content }),
     };
 
     const updatedModules = modules.map((module) => {
