@@ -61,7 +61,7 @@ export function useCollection<T = any>(
   type StateDataType = ResultItemType[] | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true); // Start as true
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   const [refetchToggle, setRefetchToggle] = useState(false);
 
@@ -70,26 +70,27 @@ export function useCollection<T = any>(
   }, []);
 
   useEffect(() => {
-    // If the query is not ready, or we shouldn't listen, stop here.
+    // If the query is not ready, or we shouldn't listen, reset state and stop.
     if (!memoizedTargetRefOrQuery || !options.listen) {
-      setIsLoading(false);
-      setData(null); // Ensure data is cleared if query becomes null
+      setData(null);
+      setIsLoading(false); // Not loading because there's nothing to fetch
       setError(null);
       return;
     }
 
+    // Start loading and clear previous errors as we are about to fetch.
     setIsLoading(true);
     setError(null);
 
     const unsubscribe = onSnapshot(
       memoizedTargetRefOrQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
-        const results: ResultItemType[] = [];
-        for (const doc of snapshot.docs) {
-          results.push({ ...(doc.data() as T), id: doc.id });
-        }
+        const results: ResultItemType[] = snapshot.docs.map(doc => ({
+          ...(doc.data() as T),
+          id: doc.id
+        }));
         setData(results);
-        setError(null);
+        setError(null); // Clear any previous error on successful snapshot
         setIsLoading(false);
       },
       (error: FirestoreError) => {
@@ -104,17 +105,18 @@ export function useCollection<T = any>(
           path,
         })
 
-        setError(contextualError)
-        setData(null)
-        setIsLoading(false)
+        setError(contextualError);
+        setData(null);
+        setIsLoading(false);
 
         // trigger global error propagation
         errorEmitter.emit('permission-error', contextualError);
       }
     );
 
+    // Cleanup function to unsubscribe from the listener
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery, refetchToggle, options.listen]); 
+  }, [memoizedTargetRefOrQuery, refetchToggle, options.listen]);
 
   return { data, isLoading, error, forceRefetch };
 }
