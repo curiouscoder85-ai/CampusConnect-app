@@ -14,12 +14,13 @@ import { Button } from '@/components/ui/button';
 import { Download, Award, ShieldCheck } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function CertificatePage({ params }: { params: { id: string } }) {
+export default function CertificatePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = React.use(params);
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const certificateRef = useRef<HTMLDivElement>(null);
 
-  const courseRef = useMemoFirebase(() => doc(firestore, 'courses', params.id), [firestore, params.id]);
+  const courseRef = useMemoFirebase(() => doc(firestore, 'courses', id), [firestore, id]);
   const { data: course, isLoading: courseLoading } = useDoc<Course>(courseRef);
   
   const teacherRef = useMemoFirebase(() => (course ? doc(firestore, 'users', course.teacherId) : null), [firestore, course]);

@@ -33,7 +33,7 @@ const contentIcons: Record<ContentItem['type'], React.ReactNode> = {
   quiz: <FileText className="h-4 w-4 flex-shrink-0" />,
 };
 
-export default function StudentCoursePage({ params }: { params: { id: string } }) {
+export default function StudentCoursePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
   const firestore = useFirestore();
   const { user } = useUser();
