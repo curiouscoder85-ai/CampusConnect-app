@@ -11,12 +11,11 @@ import {
   SidebarMenuButton,                        
 } from '@/components/ui/sidebar';
 import Logo from '@/components/logo';
-import { LayoutDashboard, BookCopy, MessageSquare, GraduationCap } from 'lucide-react';
+import { LayoutDashboard, BookCopy, MessageSquare } from 'lucide-react';
 
 const menuItems = [
   { href: '/teacher/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/teacher/courses', label: 'My Courses', icon: BookCopy },
-  { href: '/teacher/performance', label: 'Student Performance', icon: GraduationCap },
   { href: '/teacher/feedback', label: 'Feedback', icon: MessageSquare },
 ];
 
