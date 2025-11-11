@@ -14,6 +14,8 @@ import Logo from '@/components/logo';
 import { Button } from '@/components/ui/button';
 import { Download, Award, ShieldCheck } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
 
 export default function CertificatePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
@@ -62,56 +64,70 @@ export default function CertificatePage({ params }: { params: Promise<{ id: stri
     month: 'long',
     day: 'numeric',
   });
+  
+  const certificateId = `CC-${id.slice(0, 4).toUpperCase()}-${user.id.slice(0, 4).toUpperCase()}`;
 
   return (
-    <div className="bg-background flex flex-col items-center justify-center p-4 sm:p-8">
-      <div 
-        ref={certificateRef} 
-        className="w-full max-w-4xl bg-card relative p-2 border-2 border-primary/20"
-        style={{ fontFamily: 'serif' }}
-      >
-        <div className="border-[10px] border-primary/10 p-6">
-          <div className="relative text-center border-2 border-primary/20 py-10 px-6">
-            
-            <div className="flex justify-center mb-4">
-              <Logo />
-            </div>
+    <div className="bg-muted/40 flex flex-col items-center justify-center p-4 sm:p-8 font-serif">
+      <div className="w-full max-w-4xl">
+        <div 
+          ref={certificateRef} 
+          className="bg-background shadow-2xl aspect-[1.414/1] w-full p-2"
+        >
+          <div className="relative h-full w-full p-4 border-2 border-primary/20">
+            <div className="absolute inset-0 -m-2 h-[calc(100%+1rem)] w-[calc(100%+1rem)] border-[10px] border-primary/10"></div>
+            <div className="relative h-full w-full flex flex-col items-center justify-center text-center p-8">
+              
+              <div className="flex items-center gap-4">
+                <Logo />
+              </div>
 
-            <p className="font-headline text-lg uppercase tracking-widest text-muted-foreground">
-              Certificate of Completion
-            </p>
-            
-            <p className="mt-6 text-base italic">This certificate is proudly presented to</p>
-            
-            <h1 className="font-headline text-5xl font-bold text-primary my-4">
-              {user.name}
-            </h1>
-            
-            <p className="text-base italic">for successfully completing the course</p>
-            
-            <h2 className="font-headline text-3xl font-semibold my-4 leading-tight">{course.title}</h2>
-            
-            <p className="text-sm text-muted-foreground">on {completionDate}</p>
+              <p className="mt-8 text-lg uppercase tracking-widest text-muted-foreground">
+                Certificate of Completion
+              </p>
+              
+              <Separator className="my-6 bg-primary/20 w-1/3 mx-auto" />
+              
+              <p className="text-base italic">This is to certify that</p>
+              
+              <h1 className="font-headline text-5xl font-bold text-primary my-4">
+                {user.name}
+              </h1>
+              
+              <p className="max-w-md text-base leading-relaxed">
+                has successfully completed all requirements for the course
+              </p>
+              
+              <h2 className="font-headline text-4xl font-semibold my-6 leading-tight">{course.title}</h2>
+              
+              <div className="flex-grow"></div>
+              
+              <div className="grid grid-cols-3 items-end gap-8 w-full max-w-2xl mt-12">
+                <div className="text-center">
+                   <p className="font-semibold text-lg border-b border-muted-foreground pb-1">{teacher?.name || 'Instructor'}</p>
+                   <p className="text-xs text-muted-foreground uppercase tracking-wider mt-1">Lead Instructor</p>
+                </div>
+                <div className="flex justify-center items-center">
+                  <div className="relative">
+                    <Award className="h-24 w-24 text-amber-500/80" strokeWidth={1} />
+                    <ShieldCheck className="h-10 w-10 text-background absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" fill="hsl(var(--primary))" stroke="none" />
+                  </div>
+                </div>
+                 <div className="text-center">
+                   <p className="font-semibold text-lg border-b border-muted-foreground pb-1">{completionDate}</p>
+                   <p className="text-xs text-muted-foreground uppercase tracking-wider mt-1">Date of Completion</p>
+                </div>
+              </div>
+              
+               <p className="text-xs text-muted-foreground mt-4">Certificate ID: {certificateId}</p>
 
-            <div className="flex justify-between items-end mt-12 max-w-xl mx-auto">
-              <div className="text-center w-2/5">
-                 <p className="font-semibold text-lg border-b-2 border-dashed pb-1 font-headline">{teacher?.name || 'Instructor'}</p>
-                 <p className="text-xs text-muted-foreground uppercase tracking-wider mt-1">Lead Instructor</p>
-              </div>
-              <div className="w-1/5">
-                <ShieldCheck className="h-20 w-20 text-primary/50 mx-auto" strokeWidth={1} />
-              </div>
-              <div className="text-center w-2/5">
-                 <p className="font-semibold text-lg border-b-2 border-dashed pb-1 font-headline">CampusConnect</p>
-                 <p className="text-xs text-muted-foreground uppercase tracking-wider mt-1">Official Platform</p>
-              </div>
             </div>
           </div>
         </div>
       </div>
       <Button onClick={handleDownload} className="mt-8 font-headline">
         <Download className="mr-2 h-4 w-4" />
-        Download Certificate as PDF
+        Download Certificate
       </Button>
     </div>
   );
@@ -120,32 +136,9 @@ export default function CertificatePage({ params }: { params: Promise<{ id: stri
 
 function CertificateSkeleton() {
   return (
-    <div className="bg-background flex flex-col items-center justify-center p-4 sm:p-8">
-      <div className="w-full max-w-4xl p-2 border-2 border-primary/20">
-        <div className="border-[10px] border-primary/10 p-6">
-          <div className="relative text-center border-2 border-primary/20 py-10 px-6 space-y-6">
-            <Skeleton className="h-8 w-48 mx-auto" />
-            <Skeleton className="h-6 w-64 mx-auto" />
-            <Skeleton className="h-4 w-52 mx-auto" />
-            <Skeleton className="h-14 w-80 mx-auto my-4" />
-            <Skeleton className="h-4 w-64 mx-auto" />
-            <Skeleton className="h-10 w-96 mx-auto my-4" />
-            <Skeleton className="h-4 w-32 mx-auto" />
-             <div className="flex justify-between items-end mt-12 max-w-xl mx-auto">
-                <div className="text-center w-2/5 space-y-2">
-                    <Skeleton className="h-6 w-full" />
-                    <Skeleton className="h-3 w-20 mx-auto" />
-                </div>
-                 <div className="w-1/5">
-                    <Skeleton className="h-20 w-20 rounded-full mx-auto" />
-                </div>
-                <div className="text-center w-2/5 space-y-2">
-                    <Skeleton className="h-6 w-full" />
-                    <Skeleton className="h-3 w-24 mx-auto" />
-                </div>
-             </div>
-          </div>
-        </div>
+    <div className="bg-muted/40 flex flex-col items-center justify-center p-4 sm:p-8">
+      <div className="w-full max-w-4xl">
+        <Skeleton className="w-full aspect-[1.414/1]" />
       </div>
       <Skeleton className="h-10 w-64 mt-8" />
     </div>
