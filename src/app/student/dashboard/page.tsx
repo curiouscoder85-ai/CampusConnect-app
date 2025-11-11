@@ -22,7 +22,6 @@ function EnrolledCourseCard({ enrollment }: { enrollment: Enrollment }) {
   return (
     <CourseCard
       course={course}
-      enrollmentProgress={enrollment.progress}
       link={`/student/courses/${course.id}`}
     />
   );

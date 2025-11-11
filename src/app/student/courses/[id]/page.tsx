@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { AiRecommendations } from '@/components/ai-recommendations';
 import { Book, CheckCircle, FileText, Video, PlayCircle, Star, Check } from 'lucide-react';
@@ -200,14 +199,6 @@ export default function StudentCoursePage({ params }: { params: Promise<{ id: st
         <div className="mb-6">
           <h1 className="font-headline text-4xl font-bold tracking-tight">{course.title}</h1>
           <p className="mt-2 text-lg text-muted-foreground">{course.description}</p>
-        </div>
-
-        <div className="mb-6">
-          <div className="mb-2 flex justify-between font-medium">
-            <span>Overall Progress</span>
-            <span>{enrollment.progress}%</span>
-          </div>
-          <Progress value={enrollment.progress} />
         </div>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">

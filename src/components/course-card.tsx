@@ -13,7 +13,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import type { Course, User } from '@/lib/types';
 import { BookOpen, Check } from 'lucide-react';
 import { useDoc, useUser } from '@/firebase';
@@ -25,7 +24,6 @@ import { useToast } from '@/hooks/use-toast';
 
 interface CourseCardProps {
   course: Course;
-  enrollmentProgress?: number;
   link: string;
   action?: 'view' | 'enroll';
   isEnrolled?: boolean;
@@ -33,7 +31,6 @@ interface CourseCardProps {
 
 export function CourseCard({
   course,
-  enrollmentProgress,
   link,
   action = 'view',
   isEnrolled = false,
@@ -44,8 +41,6 @@ export function CourseCard({
   const teacherRef = useMemoFirebase(() => doc(firestore, 'users', course.teacherId), [firestore, course.teacherId]);
   const { data: teacher, isLoading: teacherLoading } = useDoc<User>(teacherRef);
   
-  const showProgress = typeof enrollmentProgress === 'number';
-
   const getInitials = (name: string) => {
     if (!name) return '??';
     const names = name.split(' ');
@@ -132,15 +127,6 @@ export function CourseCard({
         </CardDescription>
       </CardContent>
       <CardFooter className="flex flex-col items-start gap-4 p-4 pt-0">
-        {showProgress && (
-          <div className="w-full">
-            <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-              <span>Progress</span>
-              <span>{enrollmentProgress}%</span>
-            </div>
-            <Progress value={enrollmentProgress} className="h-2" />
-          </div>
-        )}
         <div className="flex w-full items-center justify-between">
           {teacherLoading ? (
              <div className="flex items-center gap-2">

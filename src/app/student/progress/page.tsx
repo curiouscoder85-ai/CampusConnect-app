@@ -13,7 +13,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -38,12 +37,6 @@ function ProgressRow({ enrollment }: { enrollment?: Enrollment }) {
           <Skeleton className="h-5 w-48" />
         </TableCell>
         <TableCell>
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-2 w-32" />
-            <Skeleton className="h-4 w-10" />
-          </div>
-        </TableCell>
-        <TableCell>
           <Skeleton className="h-5 w-24" />
         </TableCell>
         <TableCell className="text-right">
@@ -64,12 +57,6 @@ function ProgressRow({ enrollment }: { enrollment?: Enrollment }) {
         >
           {course.title}
         </Link>
-      </TableCell>
-      <TableCell>
-        <div className="flex items-center gap-3">
-          <Progress value={enrollment.progress} className="w-32 h-2" />
-          <span className="text-sm text-muted-foreground">{enrollment.progress}%</span>
-        </div>
       </TableCell>
       <TableCell>
         <Badge variant={isCompleted ? 'default' : 'secondary'}>
@@ -173,7 +160,6 @@ export default function StudentProgressPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Course</TableHead>
-                  <TableHead>Progress</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Certificate</TableHead>
                 </TableRow>
@@ -189,7 +175,7 @@ export default function StudentProgressPage() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
+                    <TableCell colSpan={3} className="h-24 text-center">
                       You are not enrolled in any courses yet.
                     </TableCell>
                   </TableRow>
