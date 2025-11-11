@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useRef } from 'react';
@@ -71,7 +72,6 @@ export default function CertificatePage({ params }: { params: Promise<{ id: stri
       >
         <div className="border-[10px] border-primary/10 p-6">
           <div className="relative text-center border-2 border-primary/20 py-10 px-6">
-            <div className="absolute inset-0 bg-[url('/certificate-bg.svg')] bg-center bg-no-repeat opacity-5"></div>
             
             <div className="flex justify-center mb-4">
               <Logo />
