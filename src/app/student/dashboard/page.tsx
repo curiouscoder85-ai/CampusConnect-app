@@ -23,6 +23,9 @@ function EnrolledCourseCard({ enrollment }: { enrollment: Enrollment }) {
     <CourseCard
       course={course}
       link={`/student/courses/${course.id}`}
+      progress={enrollment.progress}
+      isEnrolled={true}
+      action="enroll"
     />
   );
 }

@@ -21,12 +21,14 @@ import { doc, collection, serverTimestamp } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { Skeleton } from './ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { Progress } from './ui/progress';
 
 interface CourseCardProps {
   course: Course;
   link: string;
   action?: 'view' | 'enroll';
   isEnrolled?: boolean;
+  progress?: number;
 }
 
 export function CourseCard({
@@ -34,6 +36,7 @@ export function CourseCard({
   link,
   action = 'view',
   isEnrolled = false,
+  progress,
 }: CourseCardProps) {
   const firestore = useFirestore();
   const { user } = useUser();
@@ -76,9 +79,11 @@ export function CourseCard({
     if (action === 'enroll') {
       if (isEnrolled) {
         return (
-          <Button variant="outline" size="sm" disabled>
-            <Check className="mr-2 h-4 w-4" />
-            Enrolled
+          <Button asChild variant="secondary" size="sm">
+            <Link href={link}>
+              <BookOpen className="mr-2 h-4 w-4" />
+              Continue
+            </Link>
           </Button>
         );
       }
@@ -112,6 +117,11 @@ export function CourseCard({
               className="object-cover"
               data-ai-hint="course thumbnail"
             />
+             {progress !== undefined && progress > 0 && (
+              <div className="absolute bottom-0 w-full">
+                <Progress value={progress} className="h-2 rounded-none" />
+              </div>
+            )}
           </div>
         </CardHeader>
       </Link>

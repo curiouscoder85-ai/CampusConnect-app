@@ -25,6 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import React, { useState, useMemo } from 'react';
 import { ContentPlayer } from './_components/content-player';
 import { cn } from '@/lib/utils';
+import { Progress } from '@/components/ui/progress';
 
 const contentIcons: Record<ContentItem['type'], React.ReactNode> = {
   video: <Video className="h-4 w-4 flex-shrink-0" />,
@@ -199,6 +200,14 @@ export default function StudentCoursePage({ params }: { params: Promise<{ id: st
         <div className="mb-6">
           <h1 className="font-headline text-4xl font-bold tracking-tight">{course.title}</h1>
           <p className="mt-2 text-lg text-muted-foreground">{course.description}</p>
+        </div>
+        
+        <div className="mb-8">
+            <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium text-muted-foreground">Your Progress</p>
+                <p className="text-sm font-bold text-primary">{enrollment.progress}%</p>
+            </div>
+            <Progress value={enrollment.progress} />
         </div>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">

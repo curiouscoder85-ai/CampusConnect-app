@@ -20,6 +20,7 @@ import { Trophy, Award, FileText } from 'lucide-react';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
+import { Progress } from '@/components/ui/progress';
 
 function ProgressRow({ enrollment }: { enrollment?: Enrollment }) {
   const firestore = useFirestore();
@@ -35,6 +36,9 @@ function ProgressRow({ enrollment }: { enrollment?: Enrollment }) {
       <TableRow>
         <TableCell>
           <Skeleton className="h-5 w-48" />
+        </TableCell>
+        <TableCell className="w-[200px]">
+           <Skeleton className="h-5 w-full" />
         </TableCell>
         <TableCell>
           <Skeleton className="h-5 w-24" />
@@ -57,6 +61,12 @@ function ProgressRow({ enrollment }: { enrollment?: Enrollment }) {
         >
           {course.title}
         </Link>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-3">
+          <Progress value={enrollment.progress} className="w-24" />
+          <span className="text-xs font-medium text-muted-foreground">{enrollment.progress}%</span>
+        </div>
       </TableCell>
       <TableCell>
         <Badge variant={isCompleted ? 'default' : 'secondary'}>
@@ -160,6 +170,7 @@ export default function StudentProgressPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Course</TableHead>
+                  <TableHead>Progress</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Certificate</TableHead>
                 </TableRow>
@@ -175,7 +186,7 @@ export default function StudentProgressPage() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={3} className="h-24 text-center">
+                    <TableCell colSpan={4} className="h-24 text-center">
                       You are not enrolled in any courses yet.
                     </TableCell>
                   </TableRow>
