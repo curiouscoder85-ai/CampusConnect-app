@@ -47,12 +47,12 @@ service cloud.firestore {
       
       allow list: if isSignedIn();
       allow get: if isSignedIn();
-      allow create: if isOwner(userId) && request.resource.data.id == userId || isRole('admin');
+      allow create: if (isOwner(userId) && request.resource.data.id == userId) || isRole('admin');
       allow update: if isOwner(userId) || isRole('admin');
       allow delete: if isRole('admin');
       
       match /chatHistory/{messageId} {
-        allow read, write: if isOwner(userId);
+        allow list, get, create, update, delete: if isOwner(userId);
       }
     }
 
