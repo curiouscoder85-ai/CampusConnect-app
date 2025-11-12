@@ -5,6 +5,7 @@
  *
  * Data Structure:
  * - /users/{userId}: Stores user profiles. Only the user can read/write their own profile. Admins can read all profiles.
+ * - /users/{userId}/chatHistory/{messageId}: Stores chat messages for a user. Only the user can read/write their own history.
  * - /courses/{courseId}: Stores course information. Only the teacher who created the course can modify it.
  * - /users/{userId}/certificates/{certificateId}: Stores certificates earned by users. Only the user can access their own certificates.
  * - /courses/{courseId}/feedback/{feedbackId}: Stores feedback for each course. Only the teacher who created the course can manage feedback. Students can create feedback.
@@ -23,7 +24,7 @@
  * - Enrollment, Submission, and Feedback documents store `courseId`, `studentId`, and `teacherId`.
  *
  * Structural Segregation:
- * - User-specific data (e.g., certificates, recommendations) is stored under `/users/{userId}` to ensure private access.
+ * - User-specific data (e.g., certificates, recommendations, chatHistory) is stored under `/users/{userId}` to ensure private access.
  * - Submissions are now a root collection for easier querying by teachers.
  */
 rules_version = '2';
@@ -49,6 +50,10 @@ service cloud.firestore {
       allow create: if isOwner() && request.resource.data.id == userId || isRole('admin');
       allow update: if isOwner() || isRole('admin');
       allow delete: if isRole('admin');
+      
+      match /chatHistory/{messageId} {
+        allow read, write: if isOwner();
+      }
     }
 
     match /courses/{courseId} {

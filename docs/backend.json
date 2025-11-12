@@ -291,6 +291,33 @@
         "contentType",
         "recommendationDate"
       ]
+    },
+     "ChatMessage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Chat Message",
+      "type": "object",
+      "description": "Represents a single message in a chat conversation.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the message."
+        },
+        "text": {
+          "type": "string",
+          "description": "The content of the message."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["user", "bot"],
+          "description": "Who sent the message."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the message was sent."
+        }
+      },
+      "required": ["id", "text", "role", "createdAt"]
     }
   },
   "auth": {
@@ -313,6 +340,26 @@
             {
               "name": "userId",
               "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+       {
+        "path": "/users/{userId}/chatHistory/{messageId}",
+        "definition": {
+          "entityName": "ChatMessage",
+          "schema": {
+            "$ref": "#/backend/entities/ChatMessage"
+          },
+          "description": "Stores chat history for each user. Path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique identifier for the chat message."
             }
           ]
         }

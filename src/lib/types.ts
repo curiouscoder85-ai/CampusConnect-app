@@ -83,4 +83,5 @@ export type Message = {
   id: string;
   text: string;
   role: 'user' | 'bot';
+  createdAt?: any; // For Firestore server timestamp
 };

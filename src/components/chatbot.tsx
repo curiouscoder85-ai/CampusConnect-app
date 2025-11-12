@@ -7,12 +7,14 @@ import { Input } from './ui/input';
 import { Bot, Send, X, Loader2, Sparkle } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { curiousBotAction } from '@/app/actions';
 import { nanoid } from 'nanoid';
 import type { Message } from '@/lib/types';
 import { Skeleton } from './ui/skeleton';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, serverTimestamp, query, orderBy } from 'firebase/firestore';
 
 const getInitials = (name: string) => {
   if (!name) return '??';
@@ -29,40 +31,57 @@ export function Chatbot() {
   const [inputValue, setInputValue] = useState('');
   const [isBotLoading, setIsBotLoading] = useState(false);
   const { user } = useUser();
+  const firestore = useFirestore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const chatHistoryQuery = useMemoFirebase(
+    () =>
+      user && isOpen
+        ? query(collection(firestore, 'users', user.id, 'chatHistory'), orderBy('createdAt', 'asc'))
+        : null,
+    [firestore, user, isOpen]
+  );
+  
+  const { data: initialMessages, isLoading: historyLoading } = useCollection<Message>(chatHistoryQuery);
+
+  useEffect(() => {
+    if (initialMessages) {
+      setMessages(initialMessages);
+    }
+  }, [initialMessages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  useEffect(scrollToBottom, [messages]);
-  
+  useEffect(scrollToBottom, [messages, historyLoading]);
+
   const handleSendMessage = async () => {
     if (inputValue.trim() === '' || isBotLoading || !user) return;
 
-    const userMessage: Message = { text: inputValue, role: 'user', id: nanoid() };
+    const userMessage: Message = { text: inputValue, role: 'user', id: nanoid(), createdAt: serverTimestamp() };
+    const chatHistoryCol = collection(firestore, 'users', user.id, 'chatHistory');
     
+    // Optimistically update UI and save to Firestore
     setMessages((prev) => [...prev, userMessage]);
+    addDocumentNonBlocking(chatHistoryCol, { text: userMessage.text, role: 'user', createdAt: userMessage.createdAt });
+    
     setInputValue('');
     setIsBotLoading(true);
 
-    const responseText = await curiousBotAction({ 
-      message: inputValue, 
+    const responseText = await curiousBotAction({
+      message: inputValue,
       userId: user.id,
     });
-    
-    const botMessage: Message = { text: responseText, role: 'bot', id: nanoid() };
 
+    const botMessage: Message = { text: responseText, role: 'bot', id: nanoid(), createdAt: serverTimestamp() };
+
+    // Update UI and save bot message to Firestore
     setMessages((prev) => [...prev, botMessage]);
+    addDocumentNonBlocking(chatHistoryCol, { text: botMessage.text, role: 'bot', createdAt: botMessage.createdAt });
+
     setIsBotLoading(false);
   };
-  
-   useEffect(() => {
-    // Reset messages when chat is closed or opened
-    if (isOpen) {
-      setMessages([]);
-    }
-  }, [isOpen]);
 
   return (
     <>
@@ -79,22 +98,27 @@ export function Chatbot() {
               <Card className="w-[380px] h-[500px] flex flex-col shadow-2xl">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div className="flex items-center gap-3">
-                     <div className="relative">
-                        <Bot className="h-7 w-7 text-primary" />
-                        <Sparkle className="absolute -top-1 -right-1 h-3 w-3 text-amber-400 fill-amber-400" />
-                     </div>
-                     <CardTitle className="font-headline text-xl">CuriousBot</CardTitle>
+                    <div className="relative">
+                      <Bot className="h-7 w-7 text-primary" />
+                      <Sparkle className="absolute -top-1 -right-1 h-3 w-3 text-amber-400 fill-amber-400" />
+                    </div>
+                    <CardTitle className="font-headline text-xl">CuriousBot</CardTitle>
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
                     <X className="h-4 w-4" />
                   </Button>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {messages.length === 0 && (
-                     <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-                        <Bot className="h-12 w-12 mb-4" />
-                        <p className="text-sm">Hi! I'm CuriousBot. Ask me about coding, personal growth, or anything else you're curious about!</p>
+                  {historyLoading && (
+                     <div className="flex flex-col items-center justify-center h-full">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                      </div>
+                  )}
+                  {!historyLoading && messages.length === 0 && (
+                    <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+                      <Bot className="h-12 w-12 mb-4" />
+                      <p className="text-sm">Hi! I'm CuriousBot. Ask me about coding, personal growth, or anything else you're curious about!</p>
+                    </div>
                   )}
                   {messages.map((message) => (
                     <div
@@ -106,9 +130,9 @@ export function Chatbot() {
                     >
                       {message.role === 'bot' && (
                         <Avatar className="h-8 w-8 border-2 border-primary/50">
-                            <div className="h-full w-full bg-primary/20 flex items-center justify-center">
-                                <Bot className="h-5 w-5 text-primary" />
-                            </div>
+                          <div className="h-full w-full bg-primary/20 flex items-center justify-center">
+                            <Bot className="h-5 w-5 text-primary" />
+                          </div>
                         </Avatar>
                       )}
                       <div
@@ -129,16 +153,16 @@ export function Chatbot() {
                       )}
                     </div>
                   ))}
-                   {isBotLoading && (
+                  {isBotLoading && (
                     <div className="flex items-start gap-3">
-                        <Avatar className="h-8 w-8 border-2 border-primary/50">
-                             <div className="h-full w-full bg-primary/20 flex items-center justify-center">
-                                <Bot className="h-5 w-5 text-primary" />
-                            </div>
-                        </Avatar>
-                        <div className="bg-muted rounded-lg px-3 py-2">
-                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      <Avatar className="h-8 w-8 border-2 border-primary/50">
+                        <div className="h-full w-full bg-primary/20 flex items-center justify-center">
+                          <Bot className="h-5 w-5 text-primary" />
                         </div>
+                      </Avatar>
+                      <div className="bg-muted rounded-lg px-3 py-2">
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      </div>
                     </div>
                   )}
                   <div ref={messagesEndRef} />
