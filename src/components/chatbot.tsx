@@ -15,7 +15,7 @@ import type { Message } from '@/lib/types';
 import { Skeleton } from './ui/skeleton';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection, serverTimestamp, query, orderBy } from 'firebase/firestore';
-import { formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 
 const getInitials = (name: string) => {
   if (!name) return '??';
@@ -46,10 +46,10 @@ export function Chatbot() {
   const { data: initialMessages, isLoading: historyLoading } = useCollection<Message>(chatHistoryQuery);
 
   useEffect(() => {
-    if (initialMessages && historyLoading === false) {
+    if (initialMessages) {
       setMessages(initialMessages);
     }
-  }, [initialMessages, historyLoading]);
+  }, [initialMessages]);
 
 
   useEffect(() => {
@@ -72,7 +72,7 @@ export function Chatbot() {
     const chatHistoryCol = collection(firestore, 'users', user.id, 'chatHistory');
     
     // Optimistically update UI and save to Firestore
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages((prev) => [...prev, { ...userMessage, createdAt: { seconds: Date.now() / 1000 } }]);
     addDocumentNonBlocking(chatHistoryCol, { text: userMessage.text, role: 'user', createdAt: userMessage.createdAt });
     
     setInputValue('');
@@ -86,7 +86,7 @@ export function Chatbot() {
     const botMessage: Message = { text: responseText, role: 'bot', id: nanoid(), createdAt: serverTimestamp() };
 
     // Update UI and save bot message to Firestore
-    setMessages((prev) => [...prev, botMessage]);
+    setMessages((prev) => [...prev, { ...botMessage, createdAt: { seconds: Date.now() / 1000 } }]);
     addDocumentNonBlocking(chatHistoryCol, { text: botMessage.text, role: 'bot', createdAt: botMessage.createdAt });
 
     setIsBotLoading(false);
@@ -97,7 +97,7 @@ export function Chatbot() {
       return null;
     }
     try {
-      return formatDistanceToNow(new Date(timestamp.seconds * 1000), { addSuffix: true });
+      return format(new Date(timestamp.seconds * 1000), 'HH:mm');
     } catch (e) {
       return null;
     }
@@ -142,41 +142,39 @@ export function Chatbot() {
                     </div>
                   )}
                   {messages.map((message) => {
-                    const timeAgo = formatTimestamp(message.createdAt);
+                    const time = formatTimestamp(message.createdAt);
                     return (
-                        <div key={message.id} className="flex flex-col">
-                            <div className={cn(
-                                'flex items-start gap-3',
-                                message.role === 'user' && 'justify-end'
-                            )}>
-                                {message.role === 'bot' && (
-                                    <Avatar className="h-8 w-8 border-2 border-primary/50">
-                                    <div className="h-full w-full bg-primary/20 flex items-center justify-center">
-                                        <Bot className="h-5 w-5 text-primary" />
-                                    </div>
-                                    </Avatar>
-                                )}
-                                <div
-                                    className={cn(
-                                    'max-w-[75%] rounded-lg px-3 py-2 text-sm',
-                                    message.role === 'user'
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'bg-muted'
-                                    )}
-                                >
-                                    {message.text}
+                        <div key={message.id} className={cn(
+                          'flex items-end gap-2',
+                          message.role === 'user' && 'justify-end'
+                        )}>
+                            {message.role === 'bot' && (
+                                <Avatar className="h-8 w-8 border-2 border-primary/50">
+                                <div className="h-full w-full bg-primary/20 flex items-center justify-center">
+                                    <Bot className="h-5 w-5 text-primary" />
                                 </div>
-                                {message.role === 'user' && user && (
-                                    <Avatar className="h-8 w-8">
-                                    <AvatarImage src={user.avatar} />
-                                    <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-                                    </Avatar>
+                                </Avatar>
+                            )}
+                            <div
+                                className={cn(
+                                'max-w-[75%] rounded-lg px-3 py-2 text-sm flex items-end gap-2',
+                                message.role === 'user'
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-muted'
+                                )}
+                            >
+                                <span>{message.text}</span>
+                                {time && (
+                                  <span className="text-xs opacity-70 whitespace-nowrap">
+                                      {time}
+                                  </span>
                                 )}
                             </div>
-                            {timeAgo && (
-                                <p className={cn("text-xs text-muted-foreground mt-1", message.role === 'user' ? "text-right" : "pl-11")}>
-                                    {timeAgo}
-                                </p>
+                            {message.role === 'user' && user && (
+                                <Avatar className="h-8 w-8">
+                                <AvatarImage src={user.avatar} />
+                                <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                                </Avatar>
                             )}
                         </div>
                     )
