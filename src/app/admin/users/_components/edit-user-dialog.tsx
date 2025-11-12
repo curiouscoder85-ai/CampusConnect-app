@@ -36,31 +36,15 @@ import { useToast } from '@/hooks/use-toast';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useAuth } from '@/components/auth-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { uploadImage } from '@/firebase/storage';
+import { Pencil, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const availableAvatars = [
-  '/avatars/01.png',
-  '/avatars/02.png',
-  '/avatars/03.png',
-  '/avatars/04.png',
-  '/avatars/05.png',
-];
-
-const getInitials = (name: string) => {
-    if (!name) return '??';
-    const names = name.split(' ');
-    if (names.length > 1) {
-      return `${names[0][0]}${names[1][0]}`;
-    }
-    return name.substring(0, 2);
-};
 
 const formSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   role: z.enum(['admin', 'teacher', 'student']),
-  avatar: z.string().url('Invalid avatar URL'),
+  avatar: z.instanceof(File).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -71,10 +55,22 @@ interface EditUserDialogProps {
   onOpenChange: (isOpen: boolean) => void;
 }
 
+const getInitials = (name: string) => {
+    if (!name) return '??';
+    const names = name.split(' ');
+    if (names.length > 1) {
+      return `${names[0][0]}${names[1][0]}`;
+    }
+    return name.substring(0, 2);
+};
+
 export function EditUserDialog({ user, isOpen, onOpenChange }: EditUserDialogProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
-  const { user: currentUser } = useAuth(); // Get the currently logged-in user
+  const { user: currentUser } = useAuth();
+  const [imagePreview, setImagePreview] = React.useState<string | null>(null);
+  const [isUploading, setIsUploading] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -82,7 +78,6 @@ export function EditUserDialog({ user, isOpen, onOpenChange }: EditUserDialogPro
       firstName: '',
       lastName: '',
       role: 'student',
-      avatar: '',
     },
   });
 
@@ -92,27 +87,59 @@ export function EditUserDialog({ user, isOpen, onOpenChange }: EditUserDialogPro
         firstName: user.firstName || '',
         lastName: user.lastName || '',
         role: user.role,
-        avatar: user.avatar,
       });
+      setImagePreview(user.avatar || null);
     }
   }, [user, form]);
   
   const onSubmit = async (data: FormValues) => {
     if (!user) return;
     
-    const userRef = doc(firestore, 'users', user.id);
-    const updatedData = {
-        ...data,
-        name: `${data.firstName} ${data.lastName}`
-    };
+    setIsUploading(true);
 
-    updateDocumentNonBlocking(userRef, updatedData);
-    
-    toast({
-      title: 'User Updated',
-      description: `${updatedData.name}'s profile has been successfully updated.`,
-    });
-    onOpenChange(false);
+    try {
+      let avatarUrl = user.avatar;
+      if (data.avatar) {
+        avatarUrl = await uploadImage(data.avatar, `avatars/${user.id}`);
+      }
+
+      const userRef = doc(firestore, 'users', user.id);
+      const updatedData = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        name: `${data.firstName} ${data.lastName}`,
+        role: data.role,
+        avatar: avatarUrl,
+      };
+
+      updateDocumentNonBlocking(userRef, updatedData);
+      
+      toast({
+        title: 'User Updated',
+        description: `${updatedData.name}'s profile has been successfully updated.`,
+      });
+      onOpenChange(false);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Upload Failed',
+        description: 'Could not upload the new profile picture.',
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+  
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      form.setValue('avatar', file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
@@ -126,38 +153,34 @@ export function EditUserDialog({ user, isOpen, onOpenChange }: EditUserDialogPro
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="avatar"
-              render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel>Profile Picture</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      className="flex flex-wrap items-center gap-4"
-                    >
-                      {availableAvatars.map((avatarSrc) => (
-                        <FormItem key={avatarSrc} className="flex items-center space-x-3 space-y-0">
-                          <FormControl>
-                            <RadioGroupItem value={avatarSrc} className="sr-only" />
-                          </FormControl>
-                           <Avatar className={cn(
-                                'h-16 w-16 cursor-pointer border-2 border-transparent transition-all',
-                                field.value === avatarSrc && 'border-primary ring-2 ring-primary ring-offset-2'
-                            )}>
-                                <AvatarImage src={avatarSrc} alt={`Avatar ${avatarSrc}`} />
-                                <AvatarFallback>{getInitials(user?.name || '')}</AvatarFallback>
-                            </Avatar>
-                        </FormItem>
-                      ))}
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            
+            <div className="flex justify-center">
+              <div className="relative">
+                <Avatar className="h-32 w-32 border-4 border-background shadow-md">
+                    <AvatarImage src={imagePreview || ''} alt={user?.name} />
+                    <AvatarFallback className="text-3xl">
+                      {getInitials(user?.name || '')}
+                    </AvatarFallback>
+                </Avatar>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
+                  accept="image/png, image/jpeg, image/gif"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="absolute bottom-1 right-1 h-8 w-8 rounded-full"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -214,8 +237,9 @@ export function EditUserDialog({ user, isOpen, onOpenChange }: EditUserDialogPro
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Saving...' : 'Save Changes'}
+              <Button type="submit" disabled={isUploading}>
+                {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isUploading ? 'Saving...' : 'Save Changes'}
               </Button>
             </DialogFooter>
           </form>

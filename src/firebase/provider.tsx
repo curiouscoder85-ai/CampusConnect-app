@@ -4,6 +4,7 @@ import React, { DependencyList, createContext, useContext, ReactNode, useMemo, u
 import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
+import { FirebaseStorage } from 'firebase/storage';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import type { User as AppUser } from '@/lib/types';
 import { doc, getDoc } from 'firebase/firestore';
@@ -13,12 +14,14 @@ interface FirebaseProviderProps {
   firebaseApp: FirebaseApp;
   firestore: Firestore;
   auth: Auth;
+  storage: FirebaseStorage;
 }
 
 export interface FirebaseContextState {
   firebaseApp: FirebaseApp;
   firestore: Firestore;
   auth: Auth;
+  storage: FirebaseStorage;
   user: AppUser | null;
   loading: boolean;
 }
@@ -30,6 +33,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   firebaseApp,
   firestore,
   auth,
+  storage,
 }) => {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,10 +62,11 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       firebaseApp,
       firestore,
       auth,
+      storage,
       user,
       loading,
     }),
-    [firebaseApp, firestore, auth, user, loading]
+    [firebaseApp, firestore, auth, storage, user, loading]
   );
 
   return (
@@ -89,6 +94,11 @@ export const useAuth = (): Auth => {
 export const useFirestore = (): Firestore => {
   const { firestore } = useFirebase();
   return firestore;
+};
+
+export const useStorage = (): FirebaseStorage => {
+    const { storage } = useFirebase();
+    return storage;
 };
 
 export const useFirebaseApp = (): FirebaseApp => {
