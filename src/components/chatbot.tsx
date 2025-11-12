@@ -45,10 +45,21 @@ export function Chatbot() {
   const { data: initialMessages, isLoading: historyLoading } = useCollection<Message>(chatHistoryQuery);
 
   useEffect(() => {
-    if (initialMessages) {
+    // When the chat opens and the initial messages are loaded, set them.
+    // But also ensure that we don't overwrite messages that have been added
+    // during the current session before the history was loaded.
+    if (initialMessages && messages.length === 0) {
       setMessages(initialMessages);
     }
-  }, [initialMessages]);
+  }, [initialMessages, messages.length]);
+
+
+  useEffect(() => {
+    // When the chat is closed, clear the messages to ensure they are re-fetched next time.
+    if (!isOpen) {
+      setMessages([]);
+    }
+  }, [isOpen]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -109,7 +120,7 @@ export function Chatbot() {
                   </Button>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {historyLoading && (
+                  {historyLoading && messages.length === 0 && (
                      <div className="flex flex-col items-center justify-center h-full">
                         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                      </div>
