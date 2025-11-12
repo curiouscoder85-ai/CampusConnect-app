@@ -15,6 +15,7 @@ import type { Message } from '@/lib/types';
 import { Skeleton } from './ui/skeleton';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { formatDistanceToNow } from 'date-fns';
 
 const getInitials = (name: string) => {
   if (!name) return '??';
@@ -45,13 +46,10 @@ export function Chatbot() {
   const { data: initialMessages, isLoading: historyLoading } = useCollection<Message>(chatHistoryQuery);
 
   useEffect(() => {
-    // When the chat opens and the initial messages are loaded, set them.
-    // But also ensure that we don't overwrite messages that have been added
-    // during the current session before the history was loaded.
-    if (initialMessages && messages.length === 0) {
+    if (initialMessages && historyLoading === false) {
       setMessages(initialMessages);
     }
-  }, [initialMessages, messages.length]);
+  }, [initialMessages, historyLoading]);
 
 
   useEffect(() => {
@@ -94,6 +92,18 @@ export function Chatbot() {
     setIsBotLoading(false);
   };
 
+  const formatTimestamp = (timestamp: any) => {
+    if (!timestamp || !timestamp.seconds) {
+      return null;
+    }
+    try {
+      return formatDistanceToNow(new Date(timestamp.seconds * 1000), { addSuffix: true });
+    } catch (e) {
+      return null;
+    }
+  };
+
+
   return (
     <>
       <div className="fixed bottom-6 right-6 z-50">
@@ -131,39 +141,46 @@ export function Chatbot() {
                       <p className="text-sm">Hi! I'm CuriousBot. Ask me about coding, personal growth, or anything else you're curious about!</p>
                     </div>
                   )}
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={cn(
-                        'flex items-start gap-3',
-                        message.role === 'user' && 'justify-end'
-                      )}
-                    >
-                      {message.role === 'bot' && (
-                        <Avatar className="h-8 w-8 border-2 border-primary/50">
-                          <div className="h-full w-full bg-primary/20 flex items-center justify-center">
-                            <Bot className="h-5 w-5 text-primary" />
-                          </div>
-                        </Avatar>
-                      )}
-                      <div
-                        className={cn(
-                          'max-w-[75%] rounded-lg px-3 py-2 text-sm',
-                          message.role === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted'
-                        )}
-                      >
-                        {message.text}
-                      </div>
-                      {message.role === 'user' && user && (
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={user.avatar} />
-                          <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-                        </Avatar>
-                      )}
-                    </div>
-                  ))}
+                  {messages.map((message) => {
+                    const timeAgo = formatTimestamp(message.createdAt);
+                    return (
+                        <div key={message.id} className="flex flex-col">
+                            <div className={cn(
+                                'flex items-start gap-3',
+                                message.role === 'user' && 'justify-end'
+                            )}>
+                                {message.role === 'bot' && (
+                                    <Avatar className="h-8 w-8 border-2 border-primary/50">
+                                    <div className="h-full w-full bg-primary/20 flex items-center justify-center">
+                                        <Bot className="h-5 w-5 text-primary" />
+                                    </div>
+                                    </Avatar>
+                                )}
+                                <div
+                                    className={cn(
+                                    'max-w-[75%] rounded-lg px-3 py-2 text-sm',
+                                    message.role === 'user'
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-muted'
+                                    )}
+                                >
+                                    {message.text}
+                                </div>
+                                {message.role === 'user' && user && (
+                                    <Avatar className="h-8 w-8">
+                                    <AvatarImage src={user.avatar} />
+                                    <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                                    </Avatar>
+                                )}
+                            </div>
+                            {timeAgo && (
+                                <p className={cn("text-xs text-muted-foreground mt-1", message.role === 'user' ? "text-right" : "pl-11")}>
+                                    {timeAgo}
+                                </p>
+                            )}
+                        </div>
+                    )
+                  })}
                   {isBotLoading && (
                     <div className="flex items-start gap-3">
                       <Avatar className="h-8 w-8 border-2 border-primary/50">
