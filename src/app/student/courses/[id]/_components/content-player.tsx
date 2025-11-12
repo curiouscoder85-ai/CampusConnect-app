@@ -26,8 +26,24 @@ interface ContentPlayerProps {
 }
 
 function VideoPlayer({ url }: { url: string }) {
-  // Extract YouTube video ID
-  const videoId = url.split('v=')[1]?.split('&')[0];
+  // Regex to capture video ID from various YouTube URL formats
+  const getYouTubeId = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+
+    if (match && match[2].length === 11) {
+      return match[2];
+    } else {
+      return null;
+    }
+  };
+
+  const videoId = getYouTubeId(url);
+  
+  if (!videoId) {
+    return <div className="aspect-video w-full flex items-center justify-center bg-muted text-muted-foreground">Invalid YouTube URL</div>;
+  }
+
   const embedUrl = `https://www.youtube.com/embed/${videoId}`;
   
   return (
