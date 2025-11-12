@@ -113,7 +113,7 @@ export function Chatbot() {
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
               className="mb-2"
             >
               <Card className="w-[380px] h-[500px] flex flex-col shadow-2xl">
