@@ -100,7 +100,7 @@ service cloud.firestore {
       allow get: if isStudentEnrolled(resource.data.userId) || isTeacherOfCourse(resource.data.courseId);
       allow list: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if (isStudentEnrolled(resource.data.userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['progress', 'completedContent', 'completed'])) || isTeacherOfCourse(resource.data.courseId);
+      allow update: if (isStudentEnrolled(resource.data.userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['progress', 'completedContent'])) || isTeacherOfCourse(resource.data.courseId);
       allow delete: if isStudentEnrolled(resource.data.userId) || isTeacherOfCourse(resource.data.courseId);
     }
 
@@ -114,7 +114,7 @@ service cloud.firestore {
         }
         
         allow get: if isStudentOwner() || isTeacherOfCourse(resource.data.courseId);
-        allow list: if isRole('teacher') || (request.auth != null && request.query.userId == request.auth.uid);
+        allow list: if isRole('teacher') || (request.auth != null && request.query.get("userId") == request.auth.uid);
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
         allow update: if isTeacherOfCourse(resource.data.courseId); // Allow teacher to update (e.g., for grading)
         allow delete: if isStudentOwner() || isTeacherOfCourse(resource.data.courseId);
