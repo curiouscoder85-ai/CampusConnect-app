@@ -31,26 +31,26 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isRole(role) {
-      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      return isSignedIn() && userDoc.data.role == role;
-    }
-    
     function isSignedIn() {
       return request.auth != null;
     }
 
+    function isRole(role) {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return isSignedIn() && userDoc.data.role == role;
+    }
+
+    function isOwner(ownerId) {
+      return isSignedIn() && request.auth.uid == ownerId;
+    }
+
     match /users/{userId} {
-      function isOwner(ownerId) {
-        return isSignedIn() && request.auth.uid == ownerId;
-      }
-      
       allow list: if isSignedIn();
       allow get: if isSignedIn();
       allow create: if (isOwner(userId) && request.resource.data.id == userId) || isRole('admin');
       allow update: if isOwner(userId) || isRole('admin');
       allow delete: if isRole('admin');
-      
+
       match /chatHistory/{messageId} {
         allow list, get, create, update, delete: if isOwner(userId);
       }
@@ -70,10 +70,6 @@ service cloud.firestore {
     }
 
     match /users/{userId}/certificates/{certificateId} {
-      function isOwner(ownerId) {
-        return isSignedIn() && request.auth.uid == ownerId;
-      }
-
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
       allow create: if isOwner(userId);
@@ -119,17 +115,13 @@ service cloud.firestore {
         }
         
         allow get: if isStudentOwner() || isTeacherOfCourse(resource.data.courseId);
-        allow list: if isRole('teacher') || (request.auth != null && request.query.get("userId") == request.auth.uid);
+        allow list: if (isRole('teacher') && request.query.where[0][2] == request.auth.uid) || (isSignedIn() && request.query.where[0][2] == request.auth.uid);
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
         allow update: if isTeacherOfCourse(resource.data.courseId); // Allow teacher to update (e.g., for grading)
         allow delete: if isStudentOwner() || isTeacherOfCourse(resource.data.courseId);
     }
 
     match /users/{userId}/recommendations/{recommendationId} {
-      function isOwner(ownerId) {
-        return isSignedIn() && request.auth.uid == ownerId;
-      }
-
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
       allow create: if isOwner(userId);

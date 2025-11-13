@@ -39,8 +39,8 @@ export type Course = {
   description: string;
   teacherId: string;
   status: 'pending' | 'approved' | 'rejected';
-  modules?: Module[];
   image: string;
+  modules?: Module[];
 };
 
 export type Enrollment = {
