@@ -75,11 +75,11 @@ export default function LoginPage() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background p-4">
       <div className="bubbles">
-        {[...Array(10)].map((_, i) => (
+        {[...Array(12)].map((_, i) => (
           <div key={i} className="bubble"></div>
         ))}
       </div>
-      <Card className="w-full max-w-sm glassmorphism z-10">
+      <Card className="w-full max-w-sm glassmorphism z-10 shadow-2xl">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
             <Logo />
@@ -152,3 +152,5 @@ export default function LoginPage() {
     </main>
   );
 }
+
+    
