@@ -192,12 +192,12 @@
   }
   .bubble {
     position: absolute;
-    bottom: -100px;
+    bottom: -150px;
     width: 40px;
     height: 40px;
     background: hsl(var(--primary) / 0.2);
     border-radius: 50%;
-    opacity: 0.5;
+    opacity: 0.8;
     animation: move 10s infinite ease-in;
   }
   .bubble:nth-child(1) {
@@ -207,8 +207,8 @@
     animation-duration: 8s;
   }
   .bubble:nth-child(2) {
-    width: 20px;
-    height: 20px;
+    width: 25px;
+    height: 25px;
     left: 20%;
     animation-duration: 5s;
     animation-delay: 1s;

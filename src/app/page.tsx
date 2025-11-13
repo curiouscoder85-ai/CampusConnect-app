@@ -79,7 +79,7 @@ export default function LoginPage() {
           <div key={i} className="bubble"></div>
         ))}
       </div>
-      <Card className="w-full max-w-sm glassmorphism z-10 bg-card/20 border-border/20">
+      <Card className="w-full max-w-sm glassmorphism z-10">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
             <Logo />
