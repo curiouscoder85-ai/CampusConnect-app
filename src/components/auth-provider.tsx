@@ -20,10 +20,12 @@ import type { User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { FirebaseStorage } from 'firebase/storage';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  storage: FirebaseStorage | null;
   login: (email: string, pass: string) => Promise<User | null>;
   logout: () => void;
   signup: (name: string, email: string, pass: string) => Promise<User | null>;
@@ -32,7 +34,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { firestore, auth, user, loading } = useFirebase();
+  const { firestore, auth, storage, user, loading } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
   
@@ -107,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const value = { user, loading, login, logout, signup };
+  const value = { user, loading, login, logout, signup, storage };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

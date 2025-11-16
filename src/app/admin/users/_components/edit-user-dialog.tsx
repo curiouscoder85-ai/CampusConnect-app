@@ -38,7 +38,6 @@ import { useAuth } from '@/components/auth-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { uploadImage } from '@/firebase/storage';
 import { Pencil, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -68,7 +67,7 @@ const getInitials = (name: string) => {
 export function EditUserDialog({ user, isOpen, onOpenChange, onUserUpdated }: EditUserDialogProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, storage } = useAuth();
   const [imagePreview, setImagePreview] = React.useState<string | null>(null);
   const [isUploading, setIsUploading] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -94,7 +93,7 @@ export function EditUserDialog({ user, isOpen, onOpenChange, onUserUpdated }: Ed
   }, [user, form]);
   
   const onSubmit = async (data: FormValues) => {
-    if (!user) return;
+    if (!user || !storage) return;
     
     setIsUploading(true);
     console.log(`Starting profile update for ${user.name}...`);
@@ -103,7 +102,7 @@ export function EditUserDialog({ user, isOpen, onOpenChange, onUserUpdated }: Ed
       let avatarUrl = user.avatar;
       if (data.avatar) {
         console.log('New avatar file selected. Uploading...');
-        avatarUrl = await uploadImage(data.avatar, `avatars/${user.id}`);
+        avatarUrl = await uploadImage(storage, data.avatar, `avatars/${user.id}`);
         console.log('Avatar uploaded successfully. URL:', avatarUrl);
       } else {
         console.log('No new avatar file selected. Keeping existing avatar.');

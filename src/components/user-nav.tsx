@@ -82,6 +82,9 @@ export function UserNav() {
         user={user}
         isOpen={isProfileDialogOpen}
         onOpenChange={setIsProfileDialogOpen}
+        onUserUpdated={() => {
+          // No-op here, as the auth provider will update the user state globally
+        }}
       />
       <SettingsDialog
         isOpen={isSettingsDialogOpen}
