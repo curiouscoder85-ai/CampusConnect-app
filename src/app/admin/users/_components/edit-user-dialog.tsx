@@ -117,6 +117,7 @@ export function EditUserDialog({ user, isOpen, onOpenChange }: EditUserDialogPro
         avatar: avatarUrl,
       };
 
+      // Use non-blocking update
       updateDocumentNonBlocking(userRef, updatedData);
       console.log('Profile update sent to Firestore:', updatedData);
       
