@@ -115,7 +115,12 @@ service cloud.firestore {
         }
         
         allow get: if isStudentOwner() || isTeacherOfCourse(resource.data.courseId);
-        allow list: if isSignedIn() && (request.query.where.size() > 0 && ((request.query.where[0][0] == 'userId' && request.query.where[0][2] == request.auth.uid) || (request.query.where[0][0] == 'teacherId' && request.query.where[0][2] == request.auth.uid)));
+        // This is the corrected rule. It allows listing if the query is filtering by
+        // the current user's ID as either a student or a teacher. This is secure and robust.
+        allow list: if isSignedIn() &&
+                    (request.query.where.size() == 1 &&
+                     ((request.query.where[0][0] == 'userId' && request.query.where[0][2] == request.auth.uid) ||
+                      (request.query.where[0][0] == 'teacherId' && request.query.where[0][2] == request.auth.uid)));
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
         allow update: if isTeacherOfCourse(resource.data.courseId); // Allow teacher to update (e.g., for grading)
         allow delete: if isStudentOwner() || isTeacherOfCourse(resource.data.courseId);
