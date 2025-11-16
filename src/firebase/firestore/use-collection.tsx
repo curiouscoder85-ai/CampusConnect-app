@@ -104,6 +104,8 @@ export function useCollection<T = any>(
           operation: 'list',
           path,
         })
+        
+        console.error("Error fetching collection:", contextualError);
 
         setError(contextualError);
         setData(null);
