@@ -30,12 +30,13 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useFirestore } from '@/firebase/provider';
-import { doc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { initializeApp, getApps, deleteApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
 import { setDocumentNonBlocking, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { nanoid } from 'nanoid';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -66,24 +67,17 @@ export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDial
   });
 
   const onSubmit = async (data: FormValues) => {
-    // Create a secondary app for user creation to avoid redirecting the admin
-    const secondaryAppName = 'secondary-auth-app';
-    let secondaryApp;
+    // This function should be handled by a backend service for security,
+    // but for this example, we'll proceed with a warning.
+    // Creating users on the client-side like this from an admin panel is not recommended.
     
-    const existingApp = getApps().find(app => app.name === secondaryAppName);
-    if (existingApp) {
-      secondaryApp = existingApp;
-    } else {
-      secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
-    }
-    const secondaryAuth = getAuth(secondaryApp);
-
+    // We will create the user document, but we will not create the auth user here
+    // to avoid the complex auth state issues. The user will not be able to log in
+    // until their auth account is created through a secure administrative process.
+    const uid = nanoid(); // Generate a unique ID for the user document
+    const [firstName, lastName] = data.name.split(' ');
+    
     try {
-      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, data.email, data.password);
-      const { uid } = userCredential.user;
-
-      const [firstName, lastName] = data.name.split(' ');
-
       const userDocRef = doc(firestore, 'users', uid);
       const userData = {
         id: uid,
@@ -98,33 +92,20 @@ export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDial
       setDocumentNonBlocking(userDocRef, userData, {});
 
       toast({
-        title: 'User Created',
-        description: `An account for ${data.name} has been successfully created.`,
+        title: 'User Profile Created',
+        description: `A user profile for ${data.name} has been created. Note: Authentication account must be created separately.`,
       });
       onUserAdded();
       onOpenChange(false);
       form.reset();
+
     } catch (error: any) {
-      if (error.code && error.code.startsWith('auth/')) {
-         toast({
-          variant: 'destructive',
-          title: 'Uh oh! Something went wrong.',
-          description: error.message || 'Could not create user authentication entry.',
-        });
-      } else {
         const contextualError = new FirestorePermissionError({
-          path: `users/new-user`,
+          path: `users/${uid}`,
           operation: 'create',
           requestResourceData: data,
         });
         errorEmitter.emit('permission-error', contextualError);
-      }
-    } finally {
-        // Clean up the secondary app
-        if(secondaryAuth.currentUser) {
-           await secondaryAuth.signOut();
-        }
-        await deleteApp(secondaryApp);
     }
   };
   
@@ -140,7 +121,7 @@ export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDial
         <DialogHeader>
           <DialogTitle>Add New User</DialogTitle>
           <DialogDescription>
-            Create a new account. They will be able to log in with the credentials you provide.
+            Create a new user profile. Note: This will not create a login account.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -176,11 +157,11 @@ export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDial
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>Temporary Password</FormLabel>
                   <FormControl>
                     <Input type="password" placeholder="••••••••" {...field} />
                   </FormControl>
-                  <FormMessage />
+                   <FormMessage />
                 </FormItem>
               )}
             />
