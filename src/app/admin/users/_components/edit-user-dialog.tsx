@@ -96,11 +96,16 @@ export function EditUserDialog({ user, isOpen, onOpenChange }: EditUserDialogPro
     if (!user) return;
     
     setIsUploading(true);
+    console.log(`Starting profile update for ${user.name}...`);
 
     try {
       let avatarUrl = user.avatar;
       if (data.avatar) {
+        console.log('New avatar file selected. Uploading...');
         avatarUrl = await uploadImage(data.avatar, `avatars/${user.id}`);
+        console.log('Avatar uploaded successfully. URL:', avatarUrl);
+      } else {
+        console.log('No new avatar file selected. Keeping existing avatar.');
       }
 
       const userRef = doc(firestore, 'users', user.id);
@@ -113,17 +118,20 @@ export function EditUserDialog({ user, isOpen, onOpenChange }: EditUserDialogPro
       };
 
       updateDocumentNonBlocking(userRef, updatedData);
+      console.log('Profile update sent to Firestore:', updatedData);
       
       toast({
         title: 'User Updated',
         description: `${updatedData.name}'s profile has been successfully updated.`,
       });
+      console.log('Profile update successful!');
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Profile picture update failed:', error);
       toast({
         variant: 'destructive',
         title: 'Upload Failed',
-        description: 'Could not upload the new profile picture.',
+        description: error.message || 'Could not upload the new profile picture.',
       });
     } finally {
       setIsUploading(false);
