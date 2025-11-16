@@ -44,6 +44,22 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == ownerId;
     }
 
+    // Helper function to check if a list query is securely filtering by the user's own data.
+    function isQueryingOwnData(field) {
+      let clauses = request.query.where;
+      // Loop through all 'where' clauses to find the one that matches the field and UID.
+      // This is more robust than checking a fixed index like `clauses[0]`.
+      return isSignedIn() && clauses.size() > 0 && (
+        field in clauses && clauses[field] == request.auth.uid ||
+        (exists(
+          (i) -> i in 0..(clauses.size() - 1) &&
+                 clauses[i][0] == field &&
+                 clauses[i][1] == '==' &&
+                 clauses[i][2] == request.auth.uid
+        ))
+      );
+    }
+
     match /users/{userId} {
       allow list: if isSignedIn();
       allow get: if isSignedIn();
@@ -115,9 +131,8 @@ service cloud.firestore {
         }
         
         allow get: if isStudentOwner() || isTeacherOfCourse(resource.data.courseId);
-        // Allow list if the query is filtering by the teacher's ID or the student's own ID
-        allow list: if (isRole('teacher') && request.query.where[0][0] == 'teacherId' && request.query.where[0][2] == request.auth.uid) ||
-                     (isSignedIn() && request.query.where[0][0] == 'userId' && request.query.where[0][2] == request.auth.uid);
+        // Allow a user to list their own submissions, or a teacher to list submissions for their courses.
+        allow list: if isQueryingOwnData('userId') || isQueryingOwnData('teacherId');
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
         allow update: if isTeacherOfCourse(resource.data.courseId); // Allow teacher to update (e.g., for grading)
         allow delete: if isStudentOwner() || isTeacherOfCourse(resource.data.courseId);
