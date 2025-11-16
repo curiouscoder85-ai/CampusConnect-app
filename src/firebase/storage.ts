@@ -1,7 +1,9 @@
 'use client';
 
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { useStorage } from './provider';
+import { getApps, getApp } from 'firebase/app';
+import { getStorage } from 'firebase/storage';
+import { initializeFirebase } from '.';
 
 /**
  * Uploads an image file to Firebase Storage.
@@ -11,11 +13,9 @@ import { useStorage } from './provider';
  * @returns A promise that resolves with the public download URL of the uploaded image.
  */
 export async function uploadImage(file: File, path: string): Promise<string> {
-  // We can't use the useStorage() hook here directly as this is not a component.
-  // Instead, we assume that Firebase has been initialized and get the storage instance manually.
-  // This is a bit of a workaround but necessary for utility functions.
-  const { getStorage } = await import('firebase/storage');
-  const storage = getStorage();
+  // Hooks can't be used in here, so we need to get the storage instance manually.
+  // First, ensure Firebase is initialized.
+  const { storage } = initializeFirebase();
   
   const storageRef = ref(storage, path);
 
