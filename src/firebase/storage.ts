@@ -14,8 +14,9 @@ import { initializeFirebase } from '.';
  */
 export async function uploadImage(file: File, path: string): Promise<string> {
   // Hooks can't be used in here, so we need to get the storage instance manually.
-  // First, ensure Firebase is initialized.
-  const { storage } = initializeFirebase();
+  // First, ensure Firebase is initialized if it hasn't been already.
+  const app = getApps().length > 0 ? getApp() : initializeFirebase().firebaseApp;
+  const storage = getStorage(app);
   
   const storageRef = ref(storage, path);
 
