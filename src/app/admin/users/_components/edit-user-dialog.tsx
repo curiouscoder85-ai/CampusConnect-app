@@ -53,6 +53,7 @@ interface EditUserDialogProps {
   user: User | null;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  onUserUpdated: () => void;
 }
 
 const getInitials = (name: string) => {
@@ -64,7 +65,7 @@ const getInitials = (name: string) => {
     return name.substring(0, 2);
 };
 
-export function EditUserDialog({ user, isOpen, onOpenChange }: EditUserDialogProps) {
+export function EditUserDialog({ user, isOpen, onOpenChange, onUserUpdated }: EditUserDialogProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
@@ -126,6 +127,7 @@ export function EditUserDialog({ user, isOpen, onOpenChange }: EditUserDialogPro
         description: `${updatedData.name}'s profile has been successfully updated.`,
       });
       console.log('Profile update successful!');
+      onUserUpdated();
       onOpenChange(false);
     } catch (error: any) {
       console.error('Profile picture update failed:', error);

@@ -29,7 +29,7 @@ import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 
 interface UsersTableProps {
   users: User[];
-  onUserDeleted: () => void;
+  onUserAction: () => void;
 }
 
 const getInitials = (name: string) => {
@@ -41,7 +41,7 @@ const getInitials = (name: string) => {
     return name.substring(0, 2);
   };
 
-export function UsersTable({ users, onUserDeleted }: UsersTableProps) {
+export function UsersTable({ users, onUserAction }: UsersTableProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [editingUser, setEditingUser] = React.useState<User | null>(null);
@@ -58,7 +58,7 @@ export function UsersTable({ users, onUserDeleted }: UsersTableProps) {
       description: `The account for ${deletingUser.name} has been deleted.`,
     });
     setDeletingUser(null);
-    onUserDeleted();
+    onUserAction();
   };
 
   return (
@@ -127,6 +127,7 @@ export function UsersTable({ users, onUserDeleted }: UsersTableProps) {
             setEditingUser(null);
           }
         }}
+        onUserUpdated={onUserAction}
       />
       <DeleteUserAlert
         user={deletingUser}

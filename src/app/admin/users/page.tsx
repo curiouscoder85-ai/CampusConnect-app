@@ -41,7 +41,7 @@ export default function AdminUsersPage() {
             <Skeleton className="h-12 w-full" />
           </div>
         ) : (
-          <UsersTable users={users || []} onUserDeleted={forceRefetch} />
+          <UsersTable users={users || []} onUserAction={forceRefetch} />
         )}
       </div>
       <AddUserDialog
@@ -52,5 +52,3 @@ export default function AdminUsersPage() {
     </>
   );
 }
-
-    
