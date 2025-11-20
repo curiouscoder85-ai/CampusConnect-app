@@ -87,7 +87,7 @@ function SubmissionItem({ submission }: { submission: Submission }) {
         {submission.uploading ? (
             <Badge variant="secondary">Uploading...</Badge>
         ) : (
-            <Button variant="outline" size="icon" asChild>
+            <Button variant="outline" size="icon" asChild disabled={!submission.fileUrl}>
                 <Link href={submission.fileUrl || '#'} target="_blank" rel="noopener noreferrer">
                     <Download className="h-4 w-4"/>
                 </Link>
@@ -111,15 +111,16 @@ export function SubmissionsTable({ submissions }: { submissions: Submission[] })
           </TableRow>
         </TableHeader>
         <TableBody>
-          {submissions.map((item) => (
-            <SubmissionItem key={item.id} submission={item} />
-          ))}
-           {submissions.length === 0 && (
+          {submissions.length === 0 ? (
             <TableRow>
               <TableCell colSpan={4} className="h-24 text-center">
                 No submissions found.
               </TableCell>
             </TableRow>
+          ) : (
+             submissions.map((item) => (
+                <SubmissionItem key={item.id} submission={item} />
+             ))
           )}
         </TableBody>
       </Table>

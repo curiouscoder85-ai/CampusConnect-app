@@ -71,9 +71,11 @@ service cloud.firestore {
       
       match /assignments/{assignmentId}/submissions/{submissionId} {
         function isStudentOwner() {
+            // Note: This rule uses `resource.data` which is for get/update/delete.
+            // For create, it should be `request.resource.data`.
             return isSignedIn() && resource.data.userId == request.auth.uid;
         }
-
+        
         allow get: if isStudentOwner() || isTeacherOwner();
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
         allow update: if isTeacherOwner(); // Allow teacher to update (e.g., for grading)
@@ -90,15 +92,15 @@ service cloud.firestore {
     }
 
     match /courses/{courseId}/feedback/{feedbackId} {
-      function isTeacherOwner(courseId) {
+      function isTeacherOwnerOfCourse() {
           return isSignedIn() && get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId == request.auth.uid;
       }
 
       allow get: if true;
       allow list: if true;
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if isTeacherOwner(courseId);
-      allow delete: if isTeacherOwner(courseId);
+      allow update: if isTeacherOwnerOfCourse();
+      allow delete: if isTeacherOwnerOfCourse();
     }
 
     match /enrollments/{enrollmentId} {
@@ -129,6 +131,7 @@ service cloud.firestore {
     match /{path=**}/feedback/{feedbackId} {
       allow list: if isRole('admin') || isRole('teacher');
     }
+    
     match /{path=**}/submissions/{submissionId} {
       allow list: if isRole('teacher') && request.query.where.teacherId == request.auth.uid;
     }
