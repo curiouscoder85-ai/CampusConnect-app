@@ -12,17 +12,18 @@ export default function TeacherSubmissionsPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   
-  // This is the critical fix. The query is only constructed if the user object is available.
-  // When `user` is null during the initial load, this memoized query will also be null,
-  // preventing `useCollection` from making a request that causes a permission error.
+  // This is the critical fix. The query is only constructed if the user object is available
+  // and the user is no longer loading. When `user` is null or `isUserLoading` is true, 
+  // this memoized query will be null, preventing `useCollection` from making a request that
+  // causes a permission error.
   const submissionsQuery = useMemoFirebase(
     () => {
-      if (!user) {
+      if (isUserLoading || !user) {
         return null;
       }
       return query(collectionGroup(firestore, 'submissions'), where('teacherId', '==', user.id));
     },
-    [firestore, user] 
+    [firestore, user, isUserLoading] 
   );
   
   // The useCollection hook will correctly wait if `submissionsQuery` is null.
@@ -35,7 +36,7 @@ export default function TeacherSubmissionsPage() {
   }, [submissions]);
 
   // The final loading state correctly combines user loading and data loading.
-  const isLoading = isUserLoading || (user && submissionsLoading);
+  const isLoading = isUserLoading || submissionsLoading;
 
   return (
     <div className="flex flex-col gap-8">
