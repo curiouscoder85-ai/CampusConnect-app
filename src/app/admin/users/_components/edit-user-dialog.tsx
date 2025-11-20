@@ -123,10 +123,13 @@ export function EditUserDialog({ user, isOpen, onOpenChange, onUserUpdated }: Ed
       const uploadAvatar = async () => {
         try {
           console.log('Starting avatar upload in background...');
-          const avatarUrl = await uploadImage(storage, avatarFile, `avatars/${user.id}`);
+          const avatarUrl = await uploadImage(storage, avatarFile, `avatars/${user.id}/${avatarFile.name}`);
           console.log('Avatar uploaded successfully. URL:', avatarUrl);
           // Update the document with the new URL
           updateDocumentNonBlocking(userRef, { avatar: avatarUrl });
+          // We might want to trigger another refetch here after upload is done
+          // to ensure the UI is consistent everywhere eventually.
+          onUserUpdated();
         } catch (error: any) {
           console.error('Background avatar upload failed:', error);
           toast({
