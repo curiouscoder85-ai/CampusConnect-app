@@ -13,9 +13,15 @@ export default function TeacherSubmissionsPage() {
   const { user, isUserLoading } = useUser();
   
   const submissionsQuery = useMemoFirebase(
-    () => !isUserLoading && user ? query(collectionGroup(firestore, 'submissions'), where('teacherId', '==', user.id)) : null,
+    () => {
+      if (isUserLoading || !user) {
+        return null;
+      }
+      return query(collectionGroup(firestore, 'submissions'), where('teacherId', '==', user.id));
+    },
     [firestore, user, isUserLoading]
   );
+  
   const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
 
   const sortedSubmissions = React.useMemo(() => {
