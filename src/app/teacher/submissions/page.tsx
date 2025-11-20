@@ -1,8 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collectionGroup, query, where, orderBy } from 'firebase/firestore';
+import { useUser, useFirestore } from '@/firebase';
+import { collectionGroup, query, where, orderBy, getDocs } from 'firebase/firestore';
 import type { Submission } from '@/lib/types';
 import { SubmissionsTable } from './_components/submissions-table';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -10,31 +10,48 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function TeacherSubmissionsPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
+  const [submissions, setSubmissions] = React.useState<Submission[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
 
-  const submissionsQuery = useMemoFirebase(
-    () => {
-      // Do not construct the query until the user is fully loaded and available.
-      // This is the critical fix for the race condition.
-      if (!user) {
-        return null;
+  React.useEffect(() => {
+    // This function fetches the submissions.
+    const fetchSubmissions = async () => {
+      // It will only proceed if the user is loaded and exists.
+      if (isUserLoading || !user) {
+        return;
       }
       
-      // This is a collectionGroup query to get all submissions across all courses
-      // where the teacherId matches the current user's ID.
-      return query(
-        collectionGroup(firestore, 'submissions'),
-        where('teacherId', '==', user.id),
-        orderBy('submittedAt', 'desc')
-      );
-    },
-    [firestore, user] // The query is re-evaluated only when the user object changes.
-  );
-  
-  // The useCollection hook will safely handle the null query during initial load.
-  const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
-  
-  // The page is considered loading if the user is loading OR if the user is loaded but submissions are still fetching.
-  const isLoading = isUserLoading || submissionsLoading;
+      setIsLoading(true);
+
+      try {
+        // Construct the query to get all submissions from all courses
+        // where the teacherId matches the current user's ID.
+        const submissionsQuery = query(
+          collectionGroup(firestore, 'submissions'),
+          where('teacherId', '==', user.id),
+          orderBy('submittedAt', 'desc')
+        );
+
+        const querySnapshot = await getDocs(submissionsQuery);
+        const fetchedSubmissions = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Submission[];
+        
+        setSubmissions(fetchedSubmissions);
+
+      } catch (error) {
+        console.error("Error fetching submissions:", error);
+        // In a real app, you'd want to show an error state to the user.
+        setSubmissions([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSubmissions();
+    // This effect runs whenever the user or loading state changes.
+  }, [user, isUserLoading, firestore]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -54,7 +71,7 @@ export default function TeacherSubmissionsPage() {
           <Skeleton className="h-12 w-full" />
         </div>
       ) : (
-        <SubmissionsTable submissions={submissions || []} />
+        <SubmissionsTable submissions={submissions} />
       )}
     </div>
   );
