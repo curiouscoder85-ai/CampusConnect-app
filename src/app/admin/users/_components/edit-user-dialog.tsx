@@ -95,7 +95,6 @@ export function EditUserDialog({ user, isOpen, onOpenChange, onUserUpdated }: Ed
   const onSubmit = (data: FormValues) => {
     if (!user || !storage) return;
 
-    // Immediately update the non-image fields and give feedback
     const userRef = doc(firestore, 'users', user.id);
     const updatedData = {
       firstName: data.firstName,
@@ -104,6 +103,7 @@ export function EditUserDialog({ user, isOpen, onOpenChange, onUserUpdated }: Ed
       role: data.role,
     };
     
+    // Immediately update the non-image fields
     updateDocumentNonBlocking(userRef, updatedData);
     
     toast({
@@ -111,25 +111,19 @@ export function EditUserDialog({ user, isOpen, onOpenChange, onUserUpdated }: Ed
       description: `${updatedData.name}'s profile has been updated.`,
     });
     
-    // Close dialog and trigger refetch immediately for text fields
+    // Trigger UI refetch for text fields
     onUserUpdated();
-    onOpenChange(false);
 
     // If there's a new avatar, upload it in the background
     if (data.avatar) {
       const avatarFile = data.avatar;
       
-      // Define the async background task
       const uploadAvatar = async () => {
         try {
           const avatarUrl = await uploadImage(storage, avatarFile, `avatars/${user.id}/${avatarFile.name}`);
-          
-          // Update the document with the new URL
           updateDocumentNonBlocking(userRef, { avatar: avatarUrl });
-          
           // Trigger a final refetch AFTER the image URL has been saved to the DB
           onUserUpdated();
-
         } catch (error: any) {
           console.error('Background avatar upload failed:', error);
           toast({
@@ -140,9 +134,12 @@ export function EditUserDialog({ user, isOpen, onOpenChange, onUserUpdated }: Ed
         }
       };
 
-      // Execute the background task
+      // Execute the background task without blocking the UI
       uploadAvatar();
     }
+    
+    // Close dialog immediately
+    onOpenChange(false);
   };
   
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
