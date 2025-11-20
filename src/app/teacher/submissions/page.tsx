@@ -18,6 +18,12 @@ export default function TeacherSubmissionsPage() {
   );
   const { data: submissions, isLoading } = useCollection<Submission>(submissionsQuery);
 
+  const sortedSubmissions = React.useMemo(() => {
+    if (!submissions) return [];
+    // Sort by timestamp, newest first
+    return submissions.sort((a, b) => (b.submittedAt?.seconds || 0) - (a.submittedAt?.seconds || 0));
+  }, [submissions]);
+
   return (
     <div className="flex flex-col gap-8">
       <div className="flex items-center justify-between">
@@ -36,7 +42,7 @@ export default function TeacherSubmissionsPage() {
           <Skeleton className="h-12 w-full" />
         </div>
       ) : (
-        <SubmissionsTable submissions={submissions || []} />
+        <SubmissionsTable submissions={sortedSubmissions} />
       )}
     </div>
   );
