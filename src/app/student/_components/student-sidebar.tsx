@@ -11,11 +11,12 @@ import {
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
 import Logo from '@/components/logo';
-import { LayoutDashboard, Compass } from 'lucide-react';
+import { LayoutDashboard, Compass, ClipboardCheck } from 'lucide-react';
 
 const menuItems = [
   { href: '/student/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/student/courses', label: 'Course Catalog', icon: Compass },
+  { href: '/student/grades', label: 'My Grades', icon: ClipboardCheck },
 ];
 
 export function StudentSidebar() {
