@@ -12,18 +12,19 @@ export default function TeacherSubmissionsPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   
+  // This is the critical fix. The query is only constructed if the user object is available.
+  // When `user` is null during the initial load, this memoized query will also be null.
   const submissionsQuery = useMemoFirebase(
     () => {
-      // This is the critical fix: Do not create the query until the user object is available.
-      // If `user` is null, this will return null, and useCollection will correctly wait.
       if (!user) {
         return null;
       }
       return query(collectionGroup(firestore, 'submissions'), where('teacherId', '==', user.id));
     },
-    [firestore, user] // The dependency array now correctly only depends on `user`.
+    [firestore, user] 
   );
   
+  // The useCollection hook will correctly wait if `submissionsQuery` is null.
   const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
 
   const sortedSubmissions = React.useMemo(() => {
@@ -32,8 +33,8 @@ export default function TeacherSubmissionsPage() {
     return submissions.sort((a, b) => (b.submittedAt?.seconds || 0) - (a.submittedAt?.seconds || 0));
   }, [submissions]);
 
-  // The loading state now correctly combines the user loading state and the data loading state.
-  const isLoading = isUserLoading || (user && submissions === null && submissionsLoading);
+  // The final loading state correctly combines user loading and data loading.
+  const isLoading = isUserLoading || (user && submissionsLoading);
 
   return (
     <div className="flex flex-col gap-8">
