@@ -39,44 +39,36 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // This function is now defined inside the provider and not wrapped in useCallback
-  // to ensure it always has access to the latest `firestore` and `setUser` state.
-  const fetchUserDoc = async (firebaseUser: User | null) => {
+  const fetchUserDoc = useCallback(async (firebaseUser: User | null) => {
     if (firebaseUser) {
-        try {
-            const userDocRef = doc(firestore, 'users', firebaseUser.uid);
-            const userDoc = await getDoc(userDocRef);
-            if (userDoc.exists()) {
-              setUser({ id: userDoc.id, ...userDoc.data() } as AppUser);
-            } else {
-              // This case might happen if the Firestore user doc isn't created yet.
-              setUser(null);
-            }
-        } catch (e) {
-            console.error("Failed to fetch user document:", e);
-            setUser(null);
+      try {
+        const userDocRef = doc(firestore, 'users', firebaseUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          setUser({ id: userDoc.id, ...userDoc.data() } as AppUser);
+        } else {
+          setUser(null);
         }
-      } else {
+      } catch (e) {
+        console.error("Failed to fetch user document:", e);
         setUser(null);
       }
-      setLoading(false);
-  };
+    } else {
+      setUser(null);
+    }
+    setLoading(false);
+  }, [firestore]);
 
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-        setLoading(true);
-        fetchUserDoc(firebaseUser);
-    });
+    const unsubscribe = onAuthStateChanged(auth, fetchUserDoc);
     return () => unsubscribe();
-  }, [auth]); // Removed fetchUserDoc from dependency array
+  }, [auth, fetchUserDoc]);
   
   const reloadUser = useCallback(async () => {
     setLoading(true);
-    // Directly call fetchUserDoc with the current user from auth.
-    // This ensures we are always using the latest instance of the function.
     await fetchUserDoc(auth.currentUser);
-  }, [auth]);
+  }, [auth, fetchUserDoc]);
 
 
   const value = useMemo(
