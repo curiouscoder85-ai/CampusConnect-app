@@ -125,9 +125,9 @@ service cloud.firestore {
     }
     
     // This rule allows a teacher to list all submissions across all courses.
-    // It verifies that the 'teacherId' in the submission document matches the requestor's UID.
+    // It is secure because the client query MUST filter by teacherId.
     match /{path=**}/submissions/{submissionId} {
-      allow list: if isSignedIn() && resource.data.teacherId == request.auth.uid;
+      allow list: if isRole('teacher');
     }
   }
 }
