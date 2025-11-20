@@ -14,7 +14,7 @@ export default function TeacherSubmissionsPage() {
   const submissionsQuery = useMemoFirebase(
     () => {
       // Do not construct the query until the user is fully loaded.
-      if (!user) {
+      if (isUserLoading || !user) {
         return null;
       }
       // This is a collectionGroup query to get all submissions for the current teacher.
@@ -24,15 +24,13 @@ export default function TeacherSubmissionsPage() {
         orderBy('submittedAt', 'desc')
       );
     },
-    [firestore, user]
+    [firestore, user, isUserLoading]
   );
   
-  // The useCollection hook handles loading, errors, and data fetching.
-  // It is already equipped to throw a detailed FirestorePermissionError.
   const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
   
   // The page is loading if the user is loading or the submissions are loading.
-  const isLoading = isUserLoading || (user && submissionsLoading);
+  const isLoading = isUserLoading || submissionsLoading;
 
   return (
     <div className="flex flex-col gap-8">
