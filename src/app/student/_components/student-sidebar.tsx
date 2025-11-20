@@ -11,12 +11,11 @@ import {
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
 import Logo from '@/components/logo';
-import { LayoutDashboard, Compass, Trophy } from 'lucide-react';
+import { LayoutDashboard, Compass } from 'lucide-react';
 
 const menuItems = [
   { href: '/student/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/student/courses', label: 'Course Catalog', icon: Compass },
-  { href: '/student/progress', label: 'My Progress', icon: Trophy },
 ];
 
 export function StudentSidebar() {
