@@ -26,9 +26,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth-provider';
 import { useFirestore } from '@/firebase/provider';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { uploadImage } from '@/firebase/storage';
-import { collection, serverTimestamp } from 'firebase/firestore';
+import { collection, serverTimestamp, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { ContentItem, Course, User } from '@/lib/types';
 import { Loader2, UploadCloud } from 'lucide-react';
@@ -81,25 +81,38 @@ export function SubmitAssignmentDialog({
     }
 
     setIsSubmitting(true);
-    try {
-      // 1. Upload file to storage
-      const filePath = `submissions/${course.id}/${user.id}/${assignment.id}/${data.file.name}`;
-      const fileUrl = await uploadImage(storage, data.file, filePath);
 
-      // 2. Create submission document in Firestore
+    try {
       const submissionsCol = collection(firestore, 'submissions');
-      await addDocumentNonBlocking(submissionsCol, {
+      
+      // 1. Immediately create the submission document with an 'uploading' flag
+      const submissionDocRefPromise = addDocumentNonBlocking(submissionsCol, {
         userId: user.id,
         courseId: course.id,
         assignmentId: assignment.id,
         teacherId: course.teacherId,
         comment: data.comment || '',
-        fileUrl,
         submittedAt: serverTimestamp(),
         grade: null,
+        uploading: true, // Indicate that the file is being uploaded
       });
 
+      // Show immediate feedback to the user and close the dialog
       onSubmissionSuccess();
+
+      // 2. In the background, wait for the document to be created, then upload the file
+      const submissionDocRef = await submissionDocRefPromise;
+      if (!submissionDocRef) throw new Error("Failed to create submission document.");
+
+      const filePath = `submissions/${course.id}/${user.id}/${assignment.id}/${submissionDocRef.id}/${data.file.name}`;
+      const fileUrl = await uploadImage(storage, data.file, filePath);
+
+      // 3. Once uploaded, update the document with the file URL and remove the 'uploading' flag
+      updateDocumentNonBlocking(submissionDocRef, {
+        fileUrl,
+        uploading: false,
+      });
+
     } catch (error: any) {
       console.error('Submission failed:', error);
       toast({
@@ -108,9 +121,11 @@ export function SubmitAssignmentDialog({
         description: error.message || 'Could not submit your assignment.',
       });
     } finally {
+      // This is now less important as the dialog closes immediately, but good for cleanup
       setIsSubmitting(false);
     }
   };
+
 
   React.useEffect(() => {
     if (!isOpen) {

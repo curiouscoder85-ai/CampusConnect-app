@@ -63,7 +63,7 @@ export type Submission = {
     fileUrl?: string; // URL to the uploaded submission file
     grade: number | null;
     submittedAt: any; // Using `any` for Firebase Timestamp compatibility
-    content?: string; // a submission can have content
+    uploading?: boolean; // To indicate if file is still uploading
 };
 
 export type Feedback = {
