@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -27,6 +28,8 @@ import { useFirestore } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
+import { Download } from 'lucide-react';
+import Link from 'next/link';
 
 interface GradeSubmissionDialogProps {
   submission: Submission;
@@ -85,14 +88,27 @@ export function GradeSubmissionDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <div className="space-y-1">
-            <h4 className="font-semibold text-sm">Submitted Content:</h4>
-            <div className="prose prose-sm dark:prose-invert max-w-none rounded-md border p-4 max-h-60 overflow-auto text-muted-foreground">
-              <p>{submission.content}</p>
+          <div className="space-y-2">
+            <h4 className="font-semibold text-sm">Submitted File:</h4>
+            {submission.fileUrl ? (
+                <Button variant="outline" asChild>
+                    <Link href={submission.fileUrl} target="_blank" download>
+                        <Download className="mr-2 h-4 w-4" />
+                        Download Submission
+                    </Link>
+                </Button>
+            ) : (
+                <p className="text-sm text-muted-foreground italic">No file was submitted.</p>
+            )}
+          </div>
+           <div className="space-y-1">
+            <h4 className="font-semibold text-sm">Student Comments:</h4>
+            <div className="prose prose-sm dark:prose-invert max-w-none rounded-md border p-4 max-h-40 overflow-auto text-muted-foreground">
+              <p>{submission.comment || <span className="italic">No comments provided.</span>}</p>
             </div>
           </div>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
               <FormField
                 control={form.control}
                 name="grade"

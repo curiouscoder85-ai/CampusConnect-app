@@ -26,6 +26,7 @@ import React, { useState, useMemo } from 'react';
 import { ContentPlayer } from './_components/content-player';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
+import { SubmitAssignmentDialog } from './_components/submit-assignment-dialog';
 
 const contentIcons: Record<ContentItem['type'], React.ReactNode> = {
   video: <Video className="h-4 w-4 flex-shrink-0" />,
@@ -43,6 +44,7 @@ export default function StudentCoursePage({ params }: { params: Promise<{ id: st
   const [feedbackComment, setFeedbackComment] = useState('');
   const [feedbackRating, setFeedbackRating] = useState(0);
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [assignmentToSubmit, setAssignmentToSubmit] = useState<ContentItem | null>(null);
 
 
   const courseRef = useMemoFirebase(() => doc(firestore, 'courses', id), [firestore, id]);
@@ -80,30 +82,6 @@ export default function StudentCoursePage({ params }: { params: Promise<{ id: st
 
     forceRefetch(); // Force a refetch to update UI optimistically
   };
-
-  const handleSubmitAssignment = (assignment: ContentItem) => {
-    if (!user || !course) return;
-
-    const submissionContent = assignment.content || `This is a submission for ${assignment.title}.`;
-    
-    const submissionsCol = collection(firestore, 'submissions');
-    
-    addDocumentNonBlocking(submissionsCol, {
-      userId: user.id,
-      courseId: course.id,
-      assignmentId: assignment.id,
-      teacherId: course.teacherId, 
-      content: submissionContent,
-      submittedAt: serverTimestamp(),
-      grade: null,
-    });
-
-    toast({
-      title: 'Assignment Submitted!',
-      description: 'Your submission has been received.',
-    });
-  };
-
 
   if (courseLoading || enrollmentLoading) {
     return (
@@ -275,7 +253,7 @@ export default function StudentCoursePage({ params }: { params: Promise<{ id: st
                             <div key={assignment.id}>
                                 <h4 className="font-semibold">{assignment.title}</h4>
                                 <p className="text-sm text-muted-foreground mb-4">Apply what you've learned.</p>
-                                <Button onClick={() => handleSubmitAssignment(assignment)}>Submit Assignment</Button>
+                                <Button onClick={() => setAssignmentToSubmit(assignment)}>Submit Assignment</Button>
                             </div>
                           ))}
                         </div>
@@ -337,6 +315,24 @@ export default function StudentCoursePage({ params }: { params: Promise<{ id: st
         }}
         courseTitle={course.title}
       />
+      {assignmentToSubmit && course && user && (
+        <SubmitAssignmentDialog
+            assignment={assignmentToSubmit}
+            course={course}
+            user={user}
+            isOpen={!!assignmentToSubmit}
+            onOpenChange={(isOpen) => {
+                if (!isOpen) setAssignmentToSubmit(null);
+            }}
+            onSubmissionSuccess={() => {
+                toast({
+                    title: 'Assignment Submitted!',
+                    description: 'Your submission has been received.',
+                });
+                setAssignmentToSubmit(null);
+            }}
+        />
+      )}
     </>
   );
 }

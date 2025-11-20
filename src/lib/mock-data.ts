@@ -1,3 +1,4 @@
+
 import type { User, Course, Enrollment, Feedback, Submission } from './types';
 
 // This data is now for reference and will be replaced by Firestore data.
@@ -18,12 +19,9 @@ export const courses: Course[] = [
     status: 'approved',
     image: 'https://picsum.photos/seed/1/600/400',
     modules: [
-      { id: 'm1', title: 'HTML Basics', description: '...', videos: [], reading: [], quizzes: [] },
-      { id: 'm2', title: 'CSS Fundamentals', description: '...', videos: [], reading: [], quizzes: [] },
-    ],
-    assignments: [
-      { id: 'a1', title: 'Build a Personal Portfolio', description: 'Create a single page portfolio using HTML and CSS.' },
-    ],
+      { id: 'm1', title: 'HTML Basics', description: '...', content: [] },
+      { id: 'm2', title: 'CSS Fundamentals', description: '...', content: [] },
+    ]
   },
   {
     id: '2',
@@ -33,7 +31,6 @@ export const courses: Course[] = [
     status: 'approved',
     image: 'https://picsum.photos/seed/2/600/400',
     modules: [],
-    assignments: [],
   },
   {
     id: '3',
@@ -43,7 +40,6 @@ export const courses: Course[] = [
     status: 'pending',
     image: 'https://picsum.photos/seed/3/600/400',
     modules: [],
-    assignments: [],
   },
     {
     id: '4',
@@ -53,19 +49,18 @@ export const courses: Course[] = [
     status: 'approved',
     image: 'https://picsum.photos/seed/4/600/400',
     modules: [],
-    assignments: [],
   },
 ];
 
 export const enrollments: Enrollment[] = [
-  { id: 'e1', userId: '3', courseId: '1', progress: 75, completed: false },
-  { id: 'e2', userId: '3', courseId: '2', progress: 20, completed: false },
-  { id: 'e3', userId: '4', courseId: '1', progress: 100, completed: true },
+  { id: 'e1', userId: '3', courseId: '1', progress: 75, completed: false, teacherId: '2', completedContent: [] },
+  { id: 'e2', userId: '3', courseId: '2', progress: 20, completed: false, teacherId: '5', completedContent: [] },
+  { id: 'e3', userId: '4', courseId: '1', progress: 100, completed: true, teacherId: '2', completedContent: [] },
 ];
 
 export const submissions: Submission[] = [
-    { id: 's1', userId: '3', courseId: '1', assignmentId: 'a1', content: 'Here is my submission for the portfolio.', grade: 95, submittedAt: new Date('2023-10-26')},
-    { id: 's2', userId: '4', courseId: '1', assignmentId: 'a1', content: 'My portfolio submission.', grade: 88, submittedAt: new Date('2023-10-25')},
+    { id: 's1', userId: '3', courseId: '1', assignmentId: 'a1', comment: 'Here is my submission for the portfolio.', grade: 95, submittedAt: new Date(), teacherId: '2'},
+    { id: 's2', userId: '4', courseId: '1', assignmentId: 'a1', comment: 'My portfolio submission.', grade: 88, submittedAt: new Date(), teacherId: '2'},
 ];
 
 export const feedback: Feedback[] = [

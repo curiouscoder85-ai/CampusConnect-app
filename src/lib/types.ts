@@ -59,9 +59,11 @@ export type Submission = {
     assignmentId: string;
     courseId: string;
     teacherId: string; // Denormalized for querying
-    content: string;
+    comment: string;
+    fileUrl?: string; // URL to the uploaded submission file
     grade: number | null;
     submittedAt: any; // Using `any` for Firebase Timestamp compatibility
+    content?: string; // a submission can have content
 };
 
 export type Feedback = {
