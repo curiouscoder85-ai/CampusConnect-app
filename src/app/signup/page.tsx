@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -36,24 +36,36 @@ import {
 import Logo from '@/components/logo';
 import { useAuth } from '@/components/auth-provider';
 import { useToast } from '@/hooks/use-toast';
+import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   email: z.string().email({ message: 'Invalid email address.' }),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
   role: z.enum(['student', 'teacher'], {
     required_error: 'Please select a role.',
   }),
 });
+
+type PasswordStrength = {
+  level: 'none' | 'weak' | 'medium' | 'strong';
+  progress: number;
+  color: string;
+  text: string;
+};
+
 
 export default function SignupPage() {
   const router = useRouter();
   const { signup } = useAuth();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
-
+  const [passwordStrength, setPasswordStrength] = useState<PasswordStrength>({ level: 'none', progress: 0, color: '', text: '' });
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    mode: 'onChange',
     defaultValues: {
       name: '',
       email: '',
@@ -61,6 +73,40 @@ export default function SignupPage() {
       role: 'student',
     },
   });
+  
+  const password = form.watch('password');
+
+  useEffect(() => {
+    const checkPasswordStrength = (password: string): PasswordStrength => {
+      if (!password) return { level: 'none', progress: 0, color: '', text: ''};
+
+      let score = 0;
+      if (password.length >= 8) score++;
+      if (password.length >= 12) score++;
+      if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+      if (/[0-9]/.test(password)) score++;
+      if (/[^a-zA-Z0-9]/.test(password)) score++;
+      
+      if (password.length < 8) {
+          return { level: 'weak', progress: 25, color: 'bg-red-500', text: 'Weak: Too short' };
+      }
+
+      switch (score) {
+        case 1:
+        case 2:
+          return { level: 'weak', progress: 25, color: 'bg-red-500', text: 'Weak' };
+        case 3:
+          return { level: 'medium', progress: 60, color: 'bg-yellow-500', text: 'Medium' };
+        case 4:
+        case 5:
+          return { level: 'strong', progress: 100, color: 'bg-green-500', text: 'Strong' };
+        default:
+          return { level: 'weak', progress: 25, color: 'bg-red-500', text: 'Weak' };
+      }
+    };
+    setPasswordStrength(checkPasswordStrength(password));
+  }, [password]);
+
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
@@ -84,6 +130,9 @@ export default function SignupPage() {
       });
     }
   };
+  
+  const isSubmitDisabled = form.formState.isSubmitting || passwordStrength.level !== 'strong';
+
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
@@ -152,6 +201,12 @@ export default function SignupPage() {
                       </div>
                     </FormControl>
                     <FormMessage />
+                     {passwordStrength.level !== 'none' && (
+                        <div className="flex items-center gap-2 pt-1">
+                            <Progress value={passwordStrength.progress} className={cn("h-2", passwordStrength.color)} />
+                            <p className="text-xs text-muted-foreground">{passwordStrength.text}</p>
+                        </div>
+                    )}
                   </FormItem>
                 )}
               />
@@ -176,7 +231,7 @@ export default function SignupPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+              <Button type="submit" className="w-full" disabled={isSubmitDisabled}>
                 {form.formState.isSubmitting ? 'Creating Account...' : 'Create Account'}
               </Button>
             </form>
