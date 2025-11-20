@@ -29,7 +29,7 @@ interface AuthContextType {
   storage: FirebaseStorage | null;
   login: (email: string, pass: string) => Promise<User | null>;
   logout: () => void;
-  signup: (name: string, email: string, pass: string) => Promise<User | null>;
+  signup: (name: string, email: string, pass: string, role: 'student' | 'teacher') => Promise<User | null>;
   reloadUser: () => Promise<void>;
 }
 
@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/');
   };
 
-  const signup = async (name: string, email: string, pass: string): Promise<User | null> => {
+  const signup = async (name: string, email: string, pass: string, role: 'student' | 'teacher'): Promise<User | null> => {
     if (!auth) return null;
     try {
       const userCredential = await createUserWithEmailAndPassword(
@@ -81,11 +81,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
       const { uid } = userCredential.user;
       
-      let role: 'admin' | 'teacher' | 'student' = 'student';
+      let finalRole: 'admin' | 'teacher' | 'student' = role;
       if (email.toLowerCase() === 'admin@campus.com') {
-        role = 'admin';
-      } else if (email.toLowerCase() === 'teacher@campus.com') {
-        role = 'teacher';
+        finalRole = 'admin';
       }
 
       const [firstName, lastName] = name.split(' ');
@@ -93,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const newUser: Omit<User, 'id'> = {
         name,
         email,
-        role,
+        role: finalRole,
         firstName,
         lastName: lastName || '',
         avatar: `/avatars/0${(Math.floor(Math.random() * 5)) + 1}.png`,
