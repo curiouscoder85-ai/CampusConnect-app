@@ -13,7 +13,7 @@ export default function TeacherSubmissionsPage() {
 
   const submissionsQuery = useMemoFirebase(
     () => {
-      // Do not construct the query until the user is fully loaded.
+      // Do not construct the query until the user is fully loaded and available.
       if (isUserLoading || !user) {
         return null;
       }
@@ -29,7 +29,7 @@ export default function TeacherSubmissionsPage() {
   
   const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
   
-  // The page is loading if the user is loading or the submissions are loading.
+  // The page is loading if the user is still loading OR if the user is loaded but submissions are still fetching.
   const isLoading = isUserLoading || submissionsLoading;
 
   return (
