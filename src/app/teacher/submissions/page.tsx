@@ -13,7 +13,8 @@ export default function TeacherSubmissionsPage() {
   const { user, isUserLoading } = useUser();
   
   // This is the critical fix. The query is only constructed if the user object is available.
-  // When `user` is null during the initial load, this memoized query will also be null.
+  // When `user` is null during the initial load, this memoized query will also be null,
+  // preventing `useCollection` from making a request that causes a permission error.
   const submissionsQuery = useMemoFirebase(
     () => {
       if (!user) {
