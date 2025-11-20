@@ -111,7 +111,7 @@ export function EditUserDialog({ user, isOpen, onOpenChange, onUserUpdated }: Ed
       description: `${updatedData.name}'s profile has been updated.`,
     });
     
-    // Close dialog and trigger refetch immediately
+    // Close dialog and trigger refetch immediately for text fields
     onUserUpdated();
     onOpenChange(false);
 
@@ -122,14 +122,14 @@ export function EditUserDialog({ user, isOpen, onOpenChange, onUserUpdated }: Ed
       // Define the async background task
       const uploadAvatar = async () => {
         try {
-          console.log('Starting avatar upload in background...');
           const avatarUrl = await uploadImage(storage, avatarFile, `avatars/${user.id}/${avatarFile.name}`);
-          console.log('Avatar uploaded successfully. URL:', avatarUrl);
+          
           // Update the document with the new URL
           updateDocumentNonBlocking(userRef, { avatar: avatarUrl });
-          // We might want to trigger another refetch here after upload is done
-          // to ensure the UI is consistent everywhere eventually.
+          
+          // Trigger a final refetch AFTER the image URL has been saved to the DB
           onUserUpdated();
+
         } catch (error: any) {
           console.error('Background avatar upload failed:', error);
           toast({
