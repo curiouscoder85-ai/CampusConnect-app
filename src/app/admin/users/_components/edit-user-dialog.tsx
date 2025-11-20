@@ -92,51 +92,53 @@ export function EditUserDialog({ user, isOpen, onOpenChange, onUserUpdated }: Ed
     }
   }, [user, form]);
   
-  const onSubmit = async (data: FormValues) => {
+  const onSubmit = (data: FormValues) => {
     if (!user || !storage) return;
+
+    // Immediately update the non-image fields and give feedback
+    const userRef = doc(firestore, 'users', user.id);
+    const updatedData = {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      name: `${data.firstName} ${data.lastName}`,
+      role: data.role,
+    };
     
-    setIsUploading(true);
-    console.log(`Starting profile update for ${user.name}...`);
+    updateDocumentNonBlocking(userRef, updatedData);
+    
+    toast({
+      title: 'User Updated',
+      description: `${updatedData.name}'s profile has been updated.`,
+    });
+    
+    // Close dialog and trigger refetch immediately
+    onUserUpdated();
+    onOpenChange(false);
 
-    try {
-      let avatarUrl = user.avatar;
-      if (data.avatar) {
-        console.log('New avatar file selected. Uploading...');
-        avatarUrl = await uploadImage(storage, data.avatar, `avatars/${user.id}`);
-        console.log('Avatar uploaded successfully. URL:', avatarUrl);
-      } else {
-        console.log('No new avatar file selected. Keeping existing avatar.');
-      }
-
-      const userRef = doc(firestore, 'users', user.id);
-      const updatedData = {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        name: `${data.firstName} ${data.lastName}`,
-        role: data.role,
-        avatar: avatarUrl,
+    // If there's a new avatar, upload it in the background
+    if (data.avatar) {
+      const avatarFile = data.avatar;
+      
+      // Define the async background task
+      const uploadAvatar = async () => {
+        try {
+          console.log('Starting avatar upload in background...');
+          const avatarUrl = await uploadImage(storage, avatarFile, `avatars/${user.id}`);
+          console.log('Avatar uploaded successfully. URL:', avatarUrl);
+          // Update the document with the new URL
+          updateDocumentNonBlocking(userRef, { avatar: avatarUrl });
+        } catch (error: any) {
+          console.error('Background avatar upload failed:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Avatar Upload Failed',
+            description: 'Your profile was updated, but the new avatar could not be saved.',
+          });
+        }
       };
 
-      // Use non-blocking update
-      updateDocumentNonBlocking(userRef, updatedData);
-      console.log('Profile update sent to Firestore:', updatedData);
-      
-      toast({
-        title: 'User Updated',
-        description: `${updatedData.name}'s profile has been successfully updated.`,
-      });
-      console.log('Profile update successful!');
-      onUserUpdated();
-      onOpenChange(false);
-    } catch (error: any) {
-      console.error('Profile picture update failed:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Upload Failed',
-        description: error.message || 'Could not upload the new profile picture.',
-      });
-    } finally {
-      setIsUploading(false);
+      // Execute the background task
+      uploadAvatar();
     }
   };
   
@@ -248,7 +250,6 @@ export function EditUserDialog({ user, isOpen, onOpenChange, onUserUpdated }: Ed
                 Cancel
               </Button>
               <Button type="submit" disabled={isUploading}>
-                {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isUploading ? 'Saving...' : 'Save Changes'}
               </Button>
             </DialogFooter>
