@@ -14,12 +14,14 @@ export default function TeacherSubmissionsPage() {
   
   const submissionsQuery = useMemoFirebase(
     () => {
-      if (isUserLoading || !user) {
+      // This is the critical fix: Do not create the query until the user object is available.
+      // If `user` is null, this will return null, and useCollection will correctly wait.
+      if (!user) {
         return null;
       }
       return query(collectionGroup(firestore, 'submissions'), where('teacherId', '==', user.id));
     },
-    [firestore, user, isUserLoading]
+    [firestore, user] // The dependency array now correctly only depends on `user`.
   );
   
   const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
@@ -30,7 +32,8 @@ export default function TeacherSubmissionsPage() {
     return submissions.sort((a, b) => (b.submittedAt?.seconds || 0) - (a.submittedAt?.seconds || 0));
   }, [submissions]);
 
-  const isLoading = isUserLoading || submissionsLoading;
+  // The loading state now correctly combines the user loading state and the data loading state.
+  const isLoading = isUserLoading || (submissionsLoading && submissions === null);
 
   return (
     <div className="flex flex-col gap-8">
