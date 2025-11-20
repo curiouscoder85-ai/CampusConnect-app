@@ -44,6 +44,10 @@ service cloud.firestore {
     function isOwner(ownerId) {
       return isSignedIn() && request.auth.uid == ownerId;
     }
+    
+    function isTeacherOfCourse(courseId) {
+        return isSignedIn() && get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId == request.auth.uid;
+    }
 
     match /users/{userId} {
       allow list: if isSignedIn();
@@ -58,16 +62,12 @@ service cloud.firestore {
     }
 
     match /courses/{courseId} {
-      function isTeacherOwner() {
-          return isSignedIn() && get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId == request.auth.uid;
-      }
-
       allow get: if true;
       allow list: if true;
 
       allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid && isRole('teacher');
-      allow update: if (isTeacherOwner() || isRole('admin'));
-      allow delete: if (isTeacherOwner() || isRole('admin'));
+      allow update: if (isTeacherOfCourse(courseId) || isRole('admin'));
+      allow delete: if (isTeacherOfCourse(courseId) || isRole('admin'));
       
       match /assignments/{assignmentId}/submissions/{submissionId} {
         function isStudentOwner() {
@@ -76,10 +76,10 @@ service cloud.firestore {
             return isSignedIn() && resource.data.userId == request.auth.uid;
         }
         
-        allow get: if isStudentOwner() || isTeacherOwner();
+        allow get: if isStudentOwner() || isTeacherOfCourse(courseId);
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-        allow update: if isTeacherOwner(); // Allow teacher to update (e.g., for grading)
-        allow delete: if isStudentOwner() || isTeacherOwner();
+        allow update: if isTeacherOfCourse(courseId); // Allow teacher to update (e.g., for grading)
+        allow delete: if isStudentOwner() || isTeacherOfCourse(courseId);
       }
     }
 
@@ -92,24 +92,16 @@ service cloud.firestore {
     }
 
     match /courses/{courseId}/feedback/{feedbackId} {
-      function isTeacherOwnerOfCourse() {
-          return isSignedIn() && get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId == request.auth.uid;
-      }
-
       allow get: if true;
       allow list: if true;
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if isTeacherOwnerOfCourse();
-      allow delete: if isTeacherOwnerOfCourse();
+      allow update: if isTeacherOfCourse(courseId);
+      allow delete: if isTeacherOfCourse(courseId);
     }
 
     match /enrollments/{enrollmentId} {
       function isStudentEnrolled(studentId) {
           return isSignedIn() && request.auth.uid == studentId;
-      }
-
-      function isTeacherOfCourse(courseId) {
-        return isSignedIn() && get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId == request.auth.uid;
       }
 
       allow get: if isStudentEnrolled(resource.data.userId) || isTeacherOfCourse(resource.data.courseId);
@@ -132,11 +124,10 @@ service cloud.firestore {
       allow list: if isRole('admin') || isRole('teacher');
     }
     
-    // Rule for collection group query on 'submissions'
-    // Allows a teacher to list all submissions across all courses,
-    // but only if the query is explicitly filtering by their own teacherId.
+    // This rule allows a teacher to list all submissions across all courses.
+    // It verifies that the 'teacherId' in the submission document matches the requestor's UID.
     match /{path=**}/submissions/{submissionId} {
-      allow list: if isRole('teacher') && request.query.where.teacherId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.teacherId == request.auth.uid;
     }
   }
 }
