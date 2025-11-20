@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -34,7 +33,7 @@ export default function TeacherSubmissionsPage() {
   }, [submissions]);
 
   // The loading state now correctly combines the user loading state and the data loading state.
-  const isLoading = isUserLoading || (user && submissions === null);
+  const isLoading = isUserLoading || (user && submissions === null && submissionsLoading);
 
   return (
     <div className="flex flex-col gap-8">
