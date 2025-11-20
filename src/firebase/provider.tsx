@@ -1,6 +1,6 @@
 'use client';
 
-import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
+import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect, useCallback } from 'react';
 import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
@@ -24,6 +24,7 @@ export interface FirebaseContextState {
   storage: FirebaseStorage;
   user: AppUser | null;
   loading: boolean;
+  reloadUser: () => Promise<void>;
 }
 
 const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
@@ -38,24 +39,33 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
+  const fetchUserDoc = useCallback(async (firebaseUser: User | null) => {
+    if (firebaseUser) {
         const userDocRef = doc(firestore, 'users', firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
           setUser({ id: userDoc.id, ...userDoc.data() } as AppUser);
         } else {
+          // This case might happen if the Firestore user doc isn't created yet.
           setUser(null);
         }
       } else {
         setUser(null);
       }
       setLoading(false);
-    });
+  }, [firestore]);
 
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, fetchUserDoc);
     return () => unsubscribe();
-  }, [auth, firestore]);
+  }, [auth, fetchUserDoc]);
+  
+  const reloadUser = useCallback(async () => {
+    setLoading(true);
+    await fetchUserDoc(auth.currentUser);
+  }, [auth.currentUser, fetchUserDoc]);
+
 
   const value = useMemo(
     () => ({
@@ -65,8 +75,9 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       storage,
       user,
       loading,
+      reloadUser,
     }),
-    [firebaseApp, firestore, auth, storage, user, loading]
+    [firebaseApp, firestore, auth, storage, user, loading, reloadUser]
   );
 
   return (

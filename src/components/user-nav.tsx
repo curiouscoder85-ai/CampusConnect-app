@@ -18,7 +18,7 @@ import { EditUserDialog } from '@/app/admin/users/_components/edit-user-dialog';
 import { SettingsDialog } from './settings-dialog';
 
 export function UserNav() {
-  const { user, logout } = useAuth();
+  const { user, logout, reloadUser } = useAuth();
   const [isProfileDialogOpen, setIsProfileDialogOpen] = React.useState(false);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = React.useState(false);
 
@@ -38,6 +38,10 @@ export function UserNav() {
   const handleSettingsSelect = () => {
     setIsSettingsDialogOpen(true);
   };
+  
+  const handleUserUpdated = () => {
+    reloadUser();
+  }
 
   return (
     <>
@@ -82,9 +86,7 @@ export function UserNav() {
         user={user}
         isOpen={isProfileDialogOpen}
         onOpenChange={setIsProfileDialogOpen}
-        onUserUpdated={() => {
-          // No-op here, as the auth provider will update the user state globally
-        }}
+        onUserUpdated={handleUserUpdated}
       />
       <SettingsDialog
         isOpen={isSettingsDialogOpen}

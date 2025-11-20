@@ -6,6 +6,7 @@ import React, {
   useState,
   useEffect,
   ReactNode,
+  useCallback,
 } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -29,12 +30,13 @@ interface AuthContextType {
   login: (email: string, pass: string) => Promise<User | null>;
   logout: () => void;
   signup: (name: string, email: string, pass: string) => Promise<User | null>;
+  reloadUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { firestore, auth, storage, user, loading } = useFirebase();
+  const { firestore, auth, storage, user, loading, reloadUser: reloadFirebaseUser } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
   
@@ -108,8 +110,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
        throw error;
     }
   };
+  
+  const reloadUser = useCallback(async () => {
+    if (reloadFirebaseUser) {
+        await reloadFirebaseUser();
+    }
+  }, [reloadFirebaseUser]);
 
-  const value = { user, loading, login, logout, signup, storage };
+
+  const value = { user, loading, login, logout, signup, storage, reloadUser };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
