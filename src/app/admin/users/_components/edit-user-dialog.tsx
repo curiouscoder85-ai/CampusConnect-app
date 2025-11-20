@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useFirestore } from '@/firebase/provider';
-import { doc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -92,8 +92,9 @@ export function EditUserDialog({ user, isOpen, onOpenChange, onUserUpdated }: Ed
     }
   }, [user, form]);
   
-  const onSubmit = (data: FormValues) => {
+  const onSubmit = async (data: FormValues) => {
     if (!user || !storage) return;
+    setIsUploading(true);
 
     const userRef = doc(firestore, 'users', user.id);
     const updatedData = {
@@ -102,44 +103,35 @@ export function EditUserDialog({ user, isOpen, onOpenChange, onUserUpdated }: Ed
       name: `${data.firstName} ${data.lastName}`,
       role: data.role,
     };
-    
-    // Immediately update the non-image fields
+
+    // Immediately update text fields and close dialog
     updateDocumentNonBlocking(userRef, updatedData);
-    
     toast({
-      title: 'User Updated',
-      description: `${updatedData.name}'s profile has been updated.`,
+        title: 'User Updated',
+        description: `${updatedData.name}'s profile has been updated.`,
     });
-    
-    // Trigger UI refetch for text fields
-    onUserUpdated();
+    onUserUpdated(); // First refresh for text fields
+    onOpenChange(false);
 
     // If there's a new avatar, upload it in the background
     if (data.avatar) {
       const avatarFile = data.avatar;
-      
-      const uploadAvatar = async () => {
-        try {
-          const avatarUrl = await uploadImage(storage, avatarFile, `avatars/${user.id}/${avatarFile.name}`);
-          updateDocumentNonBlocking(userRef, { avatar: avatarUrl });
-          // Trigger a final refetch AFTER the image URL has been saved to the DB
-          onUserUpdated();
-        } catch (error: any) {
-          console.error('Background avatar upload failed:', error);
-          toast({
-            variant: 'destructive',
-            title: 'Avatar Upload Failed',
-            description: 'Your profile was updated, but the new avatar could not be saved.',
-          });
-        }
-      };
-
-      // Execute the background task without blocking the UI
-      uploadAvatar();
+      try {
+        const avatarUrl = await uploadImage(storage, avatarFile, `avatars/${user.id}/${avatarFile.name}`);
+        // This is an awaited update because we need the URL before refreshing the user.
+        await updateDoc(userRef, { avatar: avatarUrl });
+        onUserUpdated(); // Final refresh for the new avatar
+      } catch (error: any) {
+        console.error('Background avatar upload failed:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Avatar Upload Failed',
+          description: 'Profile text was updated, but the new avatar could not be saved.',
+        });
+      }
     }
     
-    // Close dialog immediately
-    onOpenChange(false);
+    setIsUploading(false);
   };
   
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -187,6 +179,7 @@ export function EditUserDialog({ user, isOpen, onOpenChange, onUserUpdated }: Ed
                   size="icon"
                   className="absolute bottom-1 right-1 h-8 w-8 rounded-full"
                   onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
@@ -246,11 +239,13 @@ export function EditUserDialog({ user, isOpen, onOpenChange, onUserUpdated }: Ed
               />
             )}
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isUploading}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isUploading}>
-                {isUploading ? 'Saving...' : 'Save Changes'}
+                {isUploading ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Saving...</>
+                ) : 'Save Changes'}
               </Button>
             </DialogFooter>
           </form>
