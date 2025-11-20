@@ -1,9 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { useUser } from '@/firebase';
-import { useFirestore } from '@/firebase/provider';
-import { collectionGroup, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collectionGroup, query, where, orderBy } from 'firebase/firestore';
 import type { Submission } from '@/lib/types';
 import { SubmissionsTable } from './_components/submissions-table';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,45 +10,29 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function TeacherSubmissionsPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
-  const [submissions, setSubmissions] = React.useState<Submission[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
 
-  React.useEffect(() => {
-    // Do not run the query until the user is fully loaded and available.
-    if (isUserLoading || !user) {
-      // If the user logs out or is not yet loaded, clear data and wait.
-      if (!isUserLoading) {
-         setSubmissions([]);
-         setIsLoading(false);
+  const submissionsQuery = useMemoFirebase(
+    () => {
+      // Do not construct the query until the user is fully loaded.
+      if (!user) {
+        return null;
       }
-      return;
-    }
-
-    const fetchSubmissions = async () => {
-      setIsLoading(true);
-      try {
-        const submissionsQuery = query(
-          collectionGroup(firestore, 'submissions'),
-          where('teacherId', '==', user.id),
-          orderBy('submittedAt', 'desc')
-        );
-        const querySnapshot = await getDocs(submissionsQuery);
-        const fetchedSubmissions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
-        setSubmissions(fetchedSubmissions);
-      } catch (error) {
-        console.error("Error fetching submissions:", error);
-        // In a real app, you might want to show an error state to the user.
-        setSubmissions([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSubmissions();
-  }, [firestore, user, isUserLoading]);
-
-  // Combine initial user loading with data fetching loading state.
-  const displayLoading = isLoading || isUserLoading;
+      // This is a collectionGroup query to get all submissions for the current teacher.
+      return query(
+        collectionGroup(firestore, 'submissions'),
+        where('teacherId', '==', user.id),
+        orderBy('submittedAt', 'desc')
+      );
+    },
+    [firestore, user]
+  );
+  
+  // The useCollection hook handles loading, errors, and data fetching.
+  // It is already equipped to throw a detailed FirestorePermissionError.
+  const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
+  
+  // The page is loading if the user is loading or the submissions are loading.
+  const isLoading = isUserLoading || (user && submissionsLoading);
 
   return (
     <div className="flex flex-col gap-8">
@@ -61,7 +44,7 @@ export default function TeacherSubmissionsPage() {
           </p>
         </div>
       </div>
-      {displayLoading ? (
+      {isLoading ? (
         <div className="space-y-4">
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />
@@ -69,7 +52,7 @@ export default function TeacherSubmissionsPage() {
           <Skeleton className="h-12 w-full" />
         </div>
       ) : (
-        <SubmissionsTable submissions={submissions} />
+        <SubmissionsTable submissions={submissions || []} />
       )}
     </div>
   );
