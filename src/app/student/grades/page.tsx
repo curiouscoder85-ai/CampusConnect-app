@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collectionGroup, query, where } from 'firebase/firestore';
-import type { Submission, User, Course } from '@/lib/types';
+import type { Submission } from '@/lib/types';
 import { SubmissionsTable } from './_components/submissions-table';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -14,7 +14,8 @@ export default function StudentGradesPage() {
 
   const submissionsQuery = useMemoFirebase(
     () => {
-      if (!user?.id) {
+      // This is the critical change: Do not construct the query until the user is fully loaded.
+      if (isUserLoading || !user) {
         return null;
       }
       return query(
@@ -22,7 +23,7 @@ export default function StudentGradesPage() {
         where('userId', '==', user.id)
       );
     },
-    [firestore, user?.id]
+    [firestore, user, isUserLoading] // The query now correctly depends on the loading state.
   );
   
   const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
