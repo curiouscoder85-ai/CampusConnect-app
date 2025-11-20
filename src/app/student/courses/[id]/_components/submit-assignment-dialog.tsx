@@ -83,7 +83,7 @@ export function SubmitAssignmentDialog({
     setIsSubmitting(true);
 
     try {
-      const submissionsCol = collection(firestore, 'submissions');
+      const submissionsCol = collection(firestore, 'courses', course.id, 'assignments', assignment.id, 'submissions');
       
       // 1. Immediately create the submission document with an 'uploading' flag
       const submissionDocRefPromise = addDocumentNonBlocking(submissionsCol, {

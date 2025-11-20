@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useCollection, useUser } from '@/firebase';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { collection, query, where } from 'firebase/firestore';
+import { collectionGroup, query, where } from 'firebase/firestore';
 import type { Submission } from '@/lib/types';
 import { SubmissionsTable } from './_components/submissions-table';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,7 +13,7 @@ export default function TeacherSubmissionsPage() {
   const { user } = useUser();
   
   const submissionsQuery = useMemoFirebase(
-    () => user ? query(collection(firestore, 'submissions'), where('teacherId', '==', user.id)) : null,
+    () => user ? query(collectionGroup(firestore, 'submissions'), where('teacherId', '==', user.id)) : null,
     [firestore, user]
   );
   const { data: submissions, isLoading } = useCollection<Submission>(submissionsQuery);
