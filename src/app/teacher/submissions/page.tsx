@@ -1,8 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { useUser, useFirestore } from '@/firebase';
-import { collectionGroup, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collectionGroup, query, where, orderBy } from 'firebase/firestore';
 import type { Submission } from '@/lib/types';
 import { SubmissionsTable } from './_components/submissions-table';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -10,48 +10,34 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function TeacherSubmissionsPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
-  const [submissions, setSubmissions] = React.useState<Submission[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
 
-  React.useEffect(() => {
-    // This function fetches the submissions.
-    const fetchSubmissions = async () => {
-      // It will only proceed if the user is loaded and exists.
-      if (isUserLoading || !user) {
-        return;
-      }
-      
-      setIsLoading(true);
+  const submissionsQuery = useMemoFirebase(
+    () => {
+      if (!user) return null;
+      // Query for all submissions where the teacherId matches the current user's ID.
+      // The sorting will be done on the client-side after fetching.
+      return query(
+        collectionGroup(firestore, 'submissions'),
+        where('teacherId', '==', user.id)
+      );
+    },
+    [firestore, user]
+  );
+  
+  const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
 
-      try {
-        // Construct the query to get all submissions from all courses
-        // where the teacherId matches the current user's ID.
-        const submissionsQuery = query(
-          collectionGroup(firestore, 'submissions'),
-          where('teacherId', '==', user.id),
-          orderBy('submittedAt', 'desc')
-        );
+  // Sort the submissions on the client-side after they are fetched.
+  const sortedSubmissions = React.useMemo(() => {
+    if (!submissions) return [];
+    // The `.slice()` creates a shallow copy to avoid mutating the original array
+    return submissions.slice().sort((a, b) => {
+      const dateA = a.submittedAt?.seconds || 0;
+      const dateB = b.submittedAt?.seconds || 0;
+      return dateB - dateA; // Sort descending (newest first)
+    });
+  }, [submissions]);
 
-        const querySnapshot = await getDocs(submissionsQuery);
-        const fetchedSubmissions = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Submission[];
-        
-        setSubmissions(fetchedSubmissions);
-
-      } catch (error) {
-        console.error("Error fetching submissions:", error);
-        // In a real app, you'd want to show an error state to the user.
-        setSubmissions([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSubmissions();
-    // This effect runs whenever the user or loading state changes.
-  }, [user, isUserLoading, firestore]);
+  const isLoading = isUserLoading || submissionsLoading;
 
   return (
     <div className="flex flex-col gap-8">
@@ -71,7 +57,7 @@ export default function TeacherSubmissionsPage() {
           <Skeleton className="h-12 w-full" />
         </div>
       ) : (
-        <SubmissionsTable submissions={submissions} />
+        <SubmissionsTable submissions={sortedSubmissions} />
       )}
     </div>
   );
