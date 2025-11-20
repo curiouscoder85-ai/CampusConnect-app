@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import type { Submission, User, Course, ContentItem } from '@/lib/types';
+import type { Submission, User, Course } from '@/lib/types';
 import {
   Table,
   TableBody,
@@ -99,6 +99,17 @@ function SubmissionItem({ submission }: { submission: Submission }) {
 }
 
 export function SubmissionsTable({ submissions }: { submissions: Submission[] }) {
+  if (submissions.length === 0) {
+    return (
+      <div className="text-center py-12 border-2 border-dashed rounded-lg">
+          <h3 className="font-semibold">No Submissions Found</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+              Students have not submitted any assignments for your courses yet.
+          </p>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-lg border">
       <Table>
@@ -111,17 +122,9 @@ export function SubmissionsTable({ submissions }: { submissions: Submission[] })
           </TableRow>
         </TableHeader>
         <TableBody>
-          {submissions.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={4} className="h-24 text-center">
-                No submissions found.
-              </TableCell>
-            </TableRow>
-          ) : (
-             submissions.map((item) => (
-                <SubmissionItem key={item.id} submission={item} />
-             ))
-          )}
+          {submissions.map((item) => (
+              <SubmissionItem key={item.id} submission={item} />
+          ))}
         </TableBody>
       </Table>
     </div>

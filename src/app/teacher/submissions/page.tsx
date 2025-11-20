@@ -14,22 +14,26 @@ export default function TeacherSubmissionsPage() {
   const submissionsQuery = useMemoFirebase(
     () => {
       // Do not construct the query until the user is fully loaded and available.
-      if (isUserLoading || !user) {
+      // This is the critical fix for the race condition.
+      if (!user) {
         return null;
       }
-      // This is a collectionGroup query to get all submissions for the current teacher.
+      
+      // This is a collectionGroup query to get all submissions across all courses
+      // where the teacherId matches the current user's ID.
       return query(
         collectionGroup(firestore, 'submissions'),
         where('teacherId', '==', user.id),
         orderBy('submittedAt', 'desc')
       );
     },
-    [firestore, user, isUserLoading]
+    [firestore, user] // The query is re-evaluated only when the user object changes.
   );
   
+  // The useCollection hook will safely handle the null query during initial load.
   const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
   
-  // The page is loading if the user is still loading OR if the user is loaded but submissions are still fetching.
+  // The page is considered loading if the user is loading OR if the user is loaded but submissions are still fetching.
   const isLoading = isUserLoading || submissionsLoading;
 
   return (
@@ -38,7 +42,7 @@ export default function TeacherSubmissionsPage() {
         <div>
           <h1 className="font-headline text-3xl font-bold tracking-tight">Student Submissions</h1>
           <p className="text-muted-foreground">
-            Review and grade assignments submitted by students.
+            Review and grade assignments submitted by students across all your courses.
           </p>
         </div>
       </div>

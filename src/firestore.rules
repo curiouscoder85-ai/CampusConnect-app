@@ -132,6 +132,9 @@ service cloud.firestore {
       allow list: if isRole('admin') || isRole('teacher');
     }
     
+    // Rule for collection group query on 'submissions'
+    // Allows a teacher to list all submissions across all courses,
+    // but only if the query is explicitly filtering by their own teacherId.
     match /{path=**}/submissions/{submissionId} {
       allow list: if isRole('teacher') && request.query.where.teacherId == request.auth.uid;
     }
