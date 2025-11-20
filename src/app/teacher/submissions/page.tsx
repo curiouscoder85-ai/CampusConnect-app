@@ -10,19 +10,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function TeacherSubmissionsPage() {
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   
   const submissionsQuery = useMemoFirebase(
-    () => user ? query(collectionGroup(firestore, 'submissions'), where('teacherId', '==', user.id)) : null,
-    [firestore, user]
+    () => !isUserLoading && user ? query(collectionGroup(firestore, 'submissions'), where('teacherId', '==', user.id)) : null,
+    [firestore, user, isUserLoading]
   );
-  const { data: submissions, isLoading } = useCollection<Submission>(submissionsQuery);
+  const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
 
   const sortedSubmissions = React.useMemo(() => {
     if (!submissions) return [];
     // Sort by timestamp, newest first
     return submissions.sort((a, b) => (b.submittedAt?.seconds || 0) - (a.submittedAt?.seconds || 0));
   }, [submissions]);
+
+  const isLoading = isUserLoading || submissionsLoading;
 
   return (
     <div className="flex flex-col gap-8">
