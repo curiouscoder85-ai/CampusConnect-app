@@ -125,7 +125,7 @@ service cloud.firestore {
     }
     
     // This rule allows a teacher to list all submissions across all courses.
-    // It is secure because the client query MUST filter by teacherId.
+    // This is secure because the client-side query MUST filter by teacherId.
     match /{path=**}/submissions/{submissionId} {
       allow list: if isRole('teacher');
     }

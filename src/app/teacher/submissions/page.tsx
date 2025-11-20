@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collectionGroup, query, where, orderBy } from 'firebase/firestore';
+import { collectionGroup, query, where } from 'firebase/firestore';
 import type { Submission } from '@/lib/types';
 import { SubmissionsTable } from './_components/submissions-table';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,18 +13,22 @@ export default function TeacherSubmissionsPage() {
 
   const submissionsQuery = useMemoFirebase(
     () => {
-      if (!user) return null;
-      // Query for all submissions where the teacherId matches the current user's ID.
-      // The sorting will be done on the client-side after fetching.
+      // This guard is critical. Do not create the query until the user object is available.
+      if (!user) {
+        return null;
+      }
       return query(
         collectionGroup(firestore, 'submissions'),
         where('teacherId', '==', user.id)
       );
     },
-    [firestore, user]
+    [firestore, user] // This query depends on the user object.
   );
   
   const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
+
+  // Combine both loading states. The page is loading if the user is loading OR submissions are loading.
+  const isLoading = isUserLoading || submissionsLoading;
 
   // Sort the submissions on the client-side after they are fetched.
   const sortedSubmissions = React.useMemo(() => {
@@ -36,8 +40,6 @@ export default function TeacherSubmissionsPage() {
       return dateB - dateA; // Sort descending (newest first)
     });
   }, [submissions]);
-
-  const isLoading = isUserLoading || submissionsLoading;
 
   return (
     <div className="flex flex-col gap-8">
