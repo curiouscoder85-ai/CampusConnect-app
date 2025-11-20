@@ -14,7 +14,7 @@ export default function StudentGradesPage() {
 
   const submissionsQuery = useMemoFirebase(
     () => {
-      if (!user) {
+      if (!user?.id) {
         return null;
       }
       return query(
@@ -22,7 +22,7 @@ export default function StudentGradesPage() {
         where('userId', '==', user.id)
       );
     },
-    [firestore, user]
+    [firestore, user?.id]
   );
   
   const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
