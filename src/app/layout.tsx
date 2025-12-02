@@ -23,7 +23,7 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: 'CampusConnect',
   description: 'A modern, feature-rich E-Learning platform.',
-  manifest: '/manifest.webmanifest',
+  manifest: '/site.webmanifest',
 };
 
 export default function RootLayout({
