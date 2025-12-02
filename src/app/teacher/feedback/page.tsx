@@ -1,57 +1,39 @@
 'use client';
 
 import * as React from 'react';
-import { useUser, useFirestore } from '@/firebase';
-import { collection, query, where, getDocs, collectionGroup, DocumentData } from 'firebase/firestore';
-import type { Feedback, Course } from '@/lib/types';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collectionGroup, query, where } from 'firebase/firestore';
+import type { Feedback } from '@/lib/types';
 import { FeedbackTable } from '@/app/admin/feedback/_components/feedback-table'; // Re-using the admin component
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function TeacherFeedbackPage() {
   const firestore = useFirestore();
-  const { user } = useUser();
-  const [feedback, setFeedback] = React.useState<Feedback[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const { user, isUserLoading } = useUser();
 
-  React.useEffect(() => {
-    const fetchFeedback = async () => {
-      if (!user) {
-        setIsLoading(false);
-        return;
-      }
-      
-      setIsLoading(true);
-      try {
-        // 1. Find all courses for the current teacher
-        const coursesQuery = query(collection(firestore, 'courses'), where('teacherId', '==', user.id));
-        const coursesSnapshot = await getDocs(coursesQuery);
-        const teacherCourses = coursesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course));
+  const feedbackQuery = useMemoFirebase(
+    () => {
+      if (!user) return null;
+      // This efficient query gets all feedback from all courses where the teacherId matches.
+      // This requires a composite index on (teacherId, createdAt) for the 'feedback' collection group.
+      // However, for simplicity here, we will rely on the client to sort.
+      return query(
+        collectionGroup(firestore, 'feedback'),
+        where('teacherId', '==', user.id)
+      );
+    },
+    [firestore, user]
+  );
+  
+  const { data: feedback, isLoading: feedbackLoading } = useCollection<Feedback>(feedbackQuery);
 
-        if (teacherCourses.length > 0) {
-          // 2. For each course, fetch its feedback
-          const allFeedback: Feedback[] = [];
-          for (const course of teacherCourses) {
-            const feedbackQuery = query(collection(firestore, 'courses', course.id, 'feedback'));
-            const feedbackSnapshot = await getDocs(feedbackQuery);
-            const courseFeedback = feedbackSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Feedback));
-            allFeedback.push(...courseFeedback);
-          }
-          // Sort feedback by date, newest first
-          allFeedback.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-          setFeedback(allFeedback);
-        } else {
-          setFeedback([]);
-        }
-      } catch (error) {
-        console.error("Error fetching feedback:", error);
-        setFeedback([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const isLoading = isUserLoading || feedbackLoading;
 
-    fetchFeedback();
-  }, [user, firestore]);
+  const sortedFeedback = React.useMemo(() => {
+    if (!feedback) return [];
+    return feedback.slice().sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+  }, [feedback]);
+
 
   return (
     <div className="flex flex-col gap-8">
@@ -70,8 +52,8 @@ export default function TeacherFeedbackPage() {
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />
         </div>
-      ) : feedback.length > 0 ? (
-        <FeedbackTable feedback={feedback} />
+      ) : sortedFeedback.length > 0 ? (
+        <FeedbackTable feedback={sortedFeedback} />
       ) : (
         <div className="text-center py-12 border-2 border-dashed rounded-lg">
             <h3 className="font-semibold">No Feedback Yet</h3>

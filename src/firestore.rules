@@ -62,8 +62,8 @@ service cloud.firestore {
     }
 
     match /courses/{courseId} {
-      allow get: if true;
-      allow list: if true;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
 
       allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid && isRole('teacher');
       allow update: if (isTeacherOfCourse(courseId) || isRole('admin'));
@@ -81,6 +81,14 @@ service cloud.firestore {
         allow update: if isTeacherOfCourse(courseId); // Allow teacher to update (e.g., for grading)
         allow delete: if isStudentOwner() || isTeacherOfCourse(courseId);
       }
+      
+      match /feedback/{feedbackId} {
+        allow get: if true; // Publicly readable
+        allow list: if true; // Publicly listable
+        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        allow update: if isTeacherOfCourse(courseId);
+        allow delete: if isTeacherOfCourse(courseId);
+      }
     }
 
     match /users/{userId}/certificates/{certificateId} {
@@ -89,14 +97,6 @@ service cloud.firestore {
       allow create: if isOwner(userId);
       allow update: if isOwner(userId);
       allow delete: if isOwner(userId);
-    }
-
-    match /courses/{courseId}/feedback/{feedbackId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if isTeacherOfCourse(courseId);
-      allow delete: if isTeacherOfCourse(courseId);
     }
 
     match /enrollments/{enrollmentId} {
@@ -121,15 +121,13 @@ service cloud.firestore {
     
     // This allows collection group queries on feedback and submissions
     match /{path=**}/feedback/{feedbackId} {
-      allow list: if isRole('admin') || isRole('teacher');
+       allow list: if isRole('admin') || isRole('teacher');
     }
     
     // This rule allows a teacher to list all submissions across all courses.
-    // This is secure because the client-side query MUST filter by teacherId.
     // This rule allows a student to list their own submissions.
     match /{path=**}/submissions/{submissionId} {
-      allow list: if (isRole('teacher') && request.query.where.teacherId == request.auth.uid) ||
-                     (isRole('student') && request.query.where.userId == request.auth.uid);
+      allow list: if (isRole('teacher') && request.query.where.teacherId == request.auth.uid) || (isRole('student') && request.query.where.userId == request.auth.uid);
     }
   }
 }

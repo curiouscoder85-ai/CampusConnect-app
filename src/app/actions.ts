@@ -5,6 +5,7 @@ import {
   PersonalizedRecommendationsInput,
 } from '@/ai/flows/personalized-learning-recommendations';
 import { curiousBot, CuriousBotInput } from '@/ai/flows/curious-bot-flow';
+import { summarizeFeedback, SummarizeFeedbackInput } from '@/ai/flows/feedback-summary-for-teachers';
 
 export async function getPersonalizedRecommendationsAction(
   input: PersonalizedRecommendationsInput
@@ -26,4 +27,14 @@ export async function curiousBotAction(input: CuriousBotInput) {
     console.error('Error with CuriousBot:', error);
     return 'I seem to be having some trouble thinking right now. Please try again in a moment.';
   }
+}
+
+export async function summarizeFeedbackAction(input: SummarizeFeedbackInput) {
+    try {
+        const result = await summarizeFeedback(input);
+        return result;
+    } catch (error) {
+        console.error('Error summarizing feedback:', error);
+        return { summary: 'Could not generate summary.', areasForImprovement: 'Could not generate areas for improvement.' };
+    }
 }

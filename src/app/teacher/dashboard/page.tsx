@@ -6,6 +6,9 @@ import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebas
 import { collection, query, where } from 'firebase/firestore';
 import type { Course, Enrollment } from '@/lib/types';
 import { BookCopy, Users } from 'lucide-react';
+import { AiRecommendations } from '@/components/ai-recommendations';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import {summarizeFeedbackAction} from '@/app/actions';
 
 export default function TeacherDashboardPage() {
   const { user, isUserLoading: userLoading } = useUser();
@@ -25,13 +28,13 @@ export default function TeacherDashboardPage() {
         if (!firestore || courseIds.length === 0) return null;
         return query(collection(firestore, 'enrollments'), where('courseId', 'in', courseIds));
     },
-    [firestore, courseIds]
+    [firestore, courseIds] // This query now correctly depends on the populated courseIds
   );
   const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
   const totalEnrollments = enrollments?.length ?? 0;
   
-  const isLoading = userLoading || coursesLoading || enrollmentsLoading;
+  const isLoading = userLoading || coursesLoading; // Enrollment loading is secondary
 
   return (
     <div className="flex flex-col gap-8">
@@ -49,7 +52,7 @@ export default function TeacherDashboardPage() {
           value={String(totalEnrollments)}
           icon={Users}
           description="Across all your courses"
-          isLoading={isLoading}
+          isLoading={isLoading || (teacherCourses && teacherCourses.length > 0 && enrollmentsLoading)}
         />
       </div>
       {/* Additional components like recent activity or notifications can be added here */}
