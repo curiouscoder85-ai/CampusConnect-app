@@ -31,16 +31,16 @@ export function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isBotLoading, setIsBotLoading] = useState(false);
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const chatHistoryQuery = useMemoFirebase(
     () =>
-      user && isOpen
+      !isUserLoading && user && isOpen
         ? query(collection(firestore, 'users', user.id, 'chatHistory'), orderBy('createdAt', 'asc'))
         : null,
-    [firestore, user, isOpen]
+    [firestore, user, isOpen, isUserLoading]
   );
   
   const { data: initialMessages, isLoading: historyLoading } = useCollection<Message>(chatHistoryQuery);
