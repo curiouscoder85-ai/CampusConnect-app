@@ -62,8 +62,8 @@ service cloud.firestore {
     }
 
     match /courses/{courseId} {
-      allow get: if true;
-      allow list: if true;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
 
       allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid && isRole('teacher');
       allow update: if (isTeacherOfCourse(courseId) || isRole('admin'));
@@ -93,7 +93,7 @@ service cloud.firestore {
 
     match /courses/{courseId}/feedback/{feedbackId} {
       allow get: if true;
-      allow list: if true;
+      allow list: if isRole('admin') || isTeacherOfCourse(courseId);
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if isTeacherOfCourse(courseId);
       allow delete: if isTeacherOfCourse(courseId);
@@ -121,13 +121,14 @@ service cloud.firestore {
     
     // This allows collection group queries on feedback and submissions
     match /{path=**}/feedback/{feedbackId} {
-      allow list: if isRole('admin') || isRole('teacher');
+       allow list: if isRole('admin') || (isRole('teacher') && get(/databases/$(database)/documents/courses/$(path[1])).data.teacherId == request.auth.uid);
     }
     
     // This rule allows a teacher to list all submissions across all courses.
     // This is secure because the client-side query MUST filter by teacherId.
+    // This rule allows a student to list their own submissions.
     match /{path=**}/submissions/{submissionId} {
-      allow list: if isRole('teacher');
+      allow list: if isRole('teacher') || (isRole('student') && resource.data.userId == request.auth.uid);
     }
   }
 }

@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useCollection } from '@/firebase';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection, doc } from 'firebase/firestore';
-import type { Course } from '@/lib/types';
+import type { Course, User } from '@/lib/types';
 import { CoursesTable } from './_components/courses-table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -13,8 +13,24 @@ import { useToast } from '@/hooks/use-toast';
 export default function AdminCoursesPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
+
   const coursesQuery = useMemoFirebase(() => collection(firestore, 'courses'), [firestore]);
-  const { data: courses, isLoading, forceRefetch } = useCollection<Course>(coursesQuery);
+  const { data: courses, isLoading: coursesLoading, forceRefetch: forceCoursesRefetch } = useCollection<Course>(coursesQuery);
+
+  const usersQuery = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
+  const { data: users, isLoading: usersLoading } = useCollection<User>(usersQuery);
+
+  // Create a map of teacherId to teacher object for efficient lookup
+  const teachersMap = React.useMemo(() => {
+    if (!users) return {};
+    return users.reduce((acc, user) => {
+      if (user.role === 'teacher') {
+        acc[user.id] = user;
+      }
+      return acc;
+    }, {} as Record<string, User>);
+  }, [users]);
+
 
   const handleUpdateStatus = (courseId: string, status: 'approved' | 'rejected') => {
     const courseRef = doc(firestore, 'courses', courseId);
@@ -23,8 +39,10 @@ export default function AdminCoursesPage() {
       title: 'Course Updated',
       description: `The course has been ${status}.`,
     });
-    forceRefetch();
+    forceCoursesRefetch();
   };
+  
+  const isLoading = coursesLoading || usersLoading;
 
   return (
     <div className="flex flex-col gap-8">
@@ -36,16 +54,12 @@ export default function AdminCoursesPage() {
           </p>
         </div>
       </div>
-      {isLoading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
-      ) : (
-        <CoursesTable courses={courses || []} onUpdateStatus={handleUpdateStatus} />
-      )}
+       <CoursesTable 
+         courses={courses || []} 
+         teachers={teachersMap}
+         isLoading={isLoading}
+         onUpdateStatus={handleUpdateStatus} 
+       />
     </div>
   );
 }
