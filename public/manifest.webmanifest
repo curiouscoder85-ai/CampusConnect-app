@@ -1,6 +1,6 @@
 {
   "name": "CampusConnect",
-  "short_name": "CampusConnect",
+  "short_name": "Campus",
   "description": "A modern, feature-rich E-Learning platform.",
   "start_url": "/",
   "display": "standalone",
