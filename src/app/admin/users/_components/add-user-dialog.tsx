@@ -86,7 +86,7 @@ export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDial
         role: data.role,
         firstName,
         lastName: lastName || '',
-        avatar: `/avatars/0${(Math.floor(Math.random() * 5)) + 1}.png`,
+        avatar: `https://picsum.photos/seed/${uid}/200`,
       };
 
       setDocumentNonBlocking(userDocRef, userData, {});

@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: finalRole,
         firstName,
         lastName: lastName || '',
-        avatar: `/avatars/0${(Math.floor(Math.random() * 5)) + 1}.png`,
+        avatar: `https://picsum.photos/seed/${uid}/200`,
       };
 
       const userDocRef = doc(firestore, 'users', uid);
