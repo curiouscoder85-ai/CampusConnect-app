@@ -121,7 +121,7 @@ export default function StudentCoursePage({ params }: { params: Promise<{ id: st
   };
   
   const handleFeedbackSubmit = () => {
-    if (!user || !feedbackComment || feedbackRating === 0) {
+    if (!user || !course || !feedbackComment || feedbackRating === 0) {
       toast({
         variant: 'destructive',
         title: 'Incomplete Feedback',
@@ -136,6 +136,7 @@ export default function StudentCoursePage({ params }: { params: Promise<{ id: st
     addDocumentNonBlocking(feedbackCol, {
       userId: user.id,
       courseId: id,
+      teacherId: course.teacherId, // Correctly add the teacherId to the feedback
       rating: feedbackRating,
       comment: feedbackComment,
       createdAt: serverTimestamp(),

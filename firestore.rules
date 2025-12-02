@@ -124,10 +124,17 @@ service cloud.firestore {
        allow list: if isRole('admin') || (isRole('teacher') && request.query.where.teacherId == request.auth.uid);
     }
     
-    // This rule allows a teacher to list all submissions across all courses.
-    // This rule allows a student to list their own submissions.
-    match /{path=**}/submissions/{submissionId} {
-      allow list: if (isRole('teacher') && request.query.where.teacherId == request.auth.uid) || (isRole('student') && request.query.where.userId == request.auth.uid);
-    }
+   match /{path=**}/submissions/{submissionId} {
+  allow list: if isRole('teacher') || isRole('student');  
+
+  allow get: if resource.data.userId == request.auth.uid 
+            || resource.data.teacherId == request.auth.uid;
+
+  allow create: if request.resource.data.userId == request.auth.uid;
+
+  allow update, delete: if resource.data.userId == request.auth.uid 
+                      || resource.data.teacherId == request.auth.uid;
+}
+
   }
 }
