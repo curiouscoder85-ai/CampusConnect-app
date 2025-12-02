@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -14,7 +15,7 @@ export default function TeacherSubmissionsPage() {
   const submissionsQuery = useMemoFirebase(
     () => {
       // This guard is critical. Do not create the query until the user object is available.
-      if (!user) {
+      if (isUserLoading || !user) {
         return null;
       }
       return query(
@@ -22,7 +23,7 @@ export default function TeacherSubmissionsPage() {
         where('teacherId', '==', user.id)
       );
     },
-    [firestore, user] // This query depends on the user object.
+    [firestore, user, isUserLoading] // This query depends on the user object and its loading state
   );
   
   const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);

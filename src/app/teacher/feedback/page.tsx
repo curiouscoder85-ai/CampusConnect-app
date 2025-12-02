@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -13,10 +14,11 @@ export default function TeacherFeedbackPage() {
 
   const feedbackQuery = useMemoFirebase(
     () => {
-      if (!user) return null;
+      // This guard is critical. Do not create the query until the user object is available.
+      if (!user) {
+        return null;
+      }
       // This efficient query gets all feedback from all courses where the teacherId matches.
-      // This requires a composite index on (teacherId, createdAt) for the 'feedback' collection group.
-      // However, for simplicity here, we will rely on the client to sort.
       return query(
         collectionGroup(firestore, 'feedback'),
         where('teacherId', '==', user.id)
