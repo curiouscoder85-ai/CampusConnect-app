@@ -16,7 +16,6 @@ import { LayoutDashboard, BookCopy, MessageSquare, ClipboardCheck } from 'lucide
 const menuItems = [
   { href: '/teacher/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/teacher/courses', label: 'My Courses', icon: BookCopy },
-  { href: '/teacher/submissions', label: 'Submissions', icon: ClipboardCheck },
 ];
 
 export function TeacherSidebar() {
