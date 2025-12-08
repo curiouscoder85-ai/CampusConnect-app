@@ -22,7 +22,7 @@ export default function TeacherDashboardPage() {
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">
-            To ensure stability, the dashboard statistics have been temporarily disabled.
+            To ensure stability, the dashboard statistics, submissions, and feedback sections have been removed.
           </p>
         </CardContent>
       </Card>
