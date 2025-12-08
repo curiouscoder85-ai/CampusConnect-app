@@ -26,7 +26,7 @@ export default function TeacherSubmissionsPage() {
     [firestore, user, isUserLoading] // This query depends on the user object and its loading state
   );
   
-  const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
+  const { data: submissions, isLoading: submissionsLoading, forceRefetch } = useCollection<Submission>(submissionsQuery);
 
   // Combine both loading states. The page is loading if the user is loading OR submissions are loading.
   const isLoading = isUserLoading || submissionsLoading;
@@ -60,7 +60,7 @@ export default function TeacherSubmissionsPage() {
           <Skeleton className="h-12 w-full" />
         </div>
       ) : (
-        <SubmissionsTable submissions={sortedSubmissions} />
+        <SubmissionsTable submissions={sortedSubmissions} onUpdate={forceRefetch} />
       )}
     </div>
   );

@@ -12,14 +12,17 @@ import {
 } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { useDoc } from '@/firebase';
-import { doc } from 'firebase/firestore';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
+import { useDoc, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
-import { Download } from 'lucide-react';
+import { Download, Edit } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { GradeSubmissionDialog } from './grade-submission-dialog';
+import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 
 const getInitials = (name: string) => {
@@ -31,8 +34,25 @@ const getInitials = (name: string) => {
   return name.substring(0, 2);
 };
 
-function SubmissionItem({ submission }: { submission: Submission }) {
+function GradeBadge({ grade }: { grade: number | null }) {
+  if (grade === null || grade === undefined) {
+    return <Badge variant="secondary">Not Graded</Badge>;
+  }
+
+  let colorClass = '';
+  if (grade >= 90) colorClass = 'bg-green-500 hover:bg-green-600 text-white';
+  else if (grade >= 80) colorClass = 'bg-blue-500 hover:bg-blue-600 text-white';
+  else if (grade >= 70) colorClass = 'bg-yellow-500 hover:bg-yellow-600 text-white';
+  else colorClass = 'bg-red-500 hover:bg-red-600 text-white';
+
+  return <Badge className={cn('text-base font-semibold', colorClass)}>{grade}</Badge>;
+}
+
+function SubmissionItem({ submission, onGradeUpdated }: { submission: Submission, onGradeUpdated: () => void }) {
   const firestore = useFirestore();
+  const { toast } = useToast();
+  const [isGrading, setIsGrading] = React.useState(false);
+
   const studentRef = useMemoFirebase(() => doc(firestore, 'users', submission.userId), [firestore, submission.userId]);
   const courseRef = useMemoFirebase(() => doc(firestore, 'courses', submission.courseId), [firestore, submission.courseId]);
   
@@ -47,6 +67,17 @@ function SubmissionItem({ submission }: { submission: Submission }) {
     }
     return null;
   }, [course, submission.assignmentId]);
+  
+  const handleGradeSave = (grade: number) => {
+    const submissionRef = doc(firestore, 'courses', submission.courseId, 'assignments', submission.assignmentId, 'submissions', submission.id);
+    updateDocumentNonBlocking(submissionRef, { grade });
+    toast({
+      title: 'Grade Saved',
+      description: `The grade has been saved for ${student?.name}.`,
+    });
+    onGradeUpdated();
+    setIsGrading(false);
+  }
 
   const isLoading = studentLoading || courseLoading;
   
@@ -55,6 +86,7 @@ function SubmissionItem({ submission }: { submission: Submission }) {
     : 'a few moments ago';
 
   return (
+    <>
     <TableRow>
       <TableCell>
         {isLoading ? (
@@ -94,11 +126,30 @@ function SubmissionItem({ submission }: { submission: Submission }) {
             </Button>
         )}
       </TableCell>
+      <TableCell className="text-right">
+        <div className="flex items-center justify-end gap-2">
+            <GradeBadge grade={submission.grade} />
+            <Button variant="ghost" size="icon" onClick={() => setIsGrading(true)}>
+                <Edit className="h-4 w-4 text-muted-foreground"/>
+            </Button>
+        </div>
+      </TableCell>
     </TableRow>
+     {student && assignment && (
+        <GradeSubmissionDialog
+            isOpen={isGrading}
+            onOpenChange={setIsGrading}
+            submission={submission}
+            student={student}
+            assignmentTitle={assignment.title}
+            onSave={handleGradeSave}
+        />
+     )}
+    </>
   );
 }
 
-export function SubmissionsTable({ submissions }: { submissions: Submission[] }) {
+export function SubmissionsTable({ submissions, onUpdate }: { submissions: Submission[], onUpdate: () => void }) {
   if (submissions.length === 0) {
     return (
       <div className="text-center py-12 border-2 border-dashed rounded-lg">
@@ -119,11 +170,12 @@ export function SubmissionsTable({ submissions }: { submissions: Submission[] })
             <TableHead>Assignment</TableHead>
             <TableHead>Submitted</TableHead>
             <TableHead className="text-center">File</TableHead>
+            <TableHead className="text-right">Grade</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {submissions.map((item) => (
-              <SubmissionItem key={item.id} submission={item} />
+              <SubmissionItem key={item.id} submission={item} onGradeUpdated={onUpdate} />
           ))}
         </TableBody>
       </Table>
