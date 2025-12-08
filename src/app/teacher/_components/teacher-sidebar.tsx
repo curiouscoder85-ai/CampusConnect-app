@@ -17,7 +17,6 @@ const menuItems = [
   { href: '/teacher/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/teacher/courses', label: 'My Courses', icon: BookCopy },
   { href: '/teacher/submissions', label: 'Submissions', icon: ClipboardCheck },
-  { href: '/teacher/feedback', label: 'Feedback', icon: MessageSquare },
 ];
 
 export function TeacherSidebar() {
