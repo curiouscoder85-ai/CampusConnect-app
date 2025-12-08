@@ -78,7 +78,7 @@ service cloud.firestore {
         
         allow get: if isStudentOwner() || isTeacherOfCourse(courseId);
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-        allow update: if isTeacherOfCourse(courseId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['grade']); // Allow teacher to update only grade
+        allow update: if isTeacherOfCourse(courseId); // Allow teacher to update (e.g., for grading)
         allow delete: if isStudentOwner() || isTeacherOfCourse(courseId);
       }
       
@@ -121,7 +121,7 @@ service cloud.firestore {
     
     // This allows collection group queries on feedback and submissions
     match /{path=**}/feedback/{feedbackId} {
-       allow list: if isRole('admin') || (isRole('teacher') && request.query.where.teacherId == request.auth.uid);
+       allow list: if isRole('admin') || isRole('teacher');
     }
     
    match /{path=**}/submissions/{submissionId} {
