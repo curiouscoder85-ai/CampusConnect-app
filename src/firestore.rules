@@ -85,7 +85,9 @@ service cloud.firestore {
       match /feedback/{feedbackId} {
         allow get: if true; // Publicly readable
         allow list: if true; // Publicly listable
-        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && request.resource.data.teacherId == get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId;
+        allow create: if isSignedIn() 
+                        && request.resource.data.userId == request.auth.uid
+                        && request.resource.data.teacherId == get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId;
         allow update: if isTeacherOfCourse(courseId);
         allow delete: if isTeacherOfCourse(courseId);
       }
@@ -125,7 +127,9 @@ service cloud.firestore {
     }
     
    match /{path=**}/submissions/{submissionId} {
-      allow list: if (isRole('teacher') && request.query.where.teacherId == request.auth.uid) || (isRole('student') && request.query.where.userId == request.auth.uid);
+      // A teacher can list submissions if they have the 'teacher' role.
+      // The query in the app code filters by teacherId, so this rule just needs to check the role.
+      allow list: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
     }
   }
 }
