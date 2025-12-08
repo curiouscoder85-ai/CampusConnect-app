@@ -68,8 +68,12 @@ export default function TeacherDashboardPage() {
   const firestore = useFirestore();
 
   const coursesQuery = useMemoFirebase(
-    () => (user ? query(collection(firestore, 'courses'), where('teacherId', '==', user.id)) : null),
-    [firestore, user]
+    () => {
+      // Guard: Do not create query until user is loaded.
+      if (userLoading || !user) return null;
+      return query(collection(firestore, 'courses'), where('teacherId', '==', user.id));
+    },
+    [firestore, user, userLoading]
   );
   const { data: teacherCourses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
 
@@ -77,24 +81,28 @@ export default function TeacherDashboardPage() {
 
   const enrollmentsQuery = useMemoFirebase(
     () => {
-        // This is the critical fix: Do not run the query until the courseIds array has been populated.
-        if (!firestore || courseIds.length === 0) return null;
+        // Guard: Do not run the query until the courseIds array has been populated.
+        if (userLoading || !firestore || courseIds.length === 0) return null;
         return query(collection(firestore, 'enrollments'), where('courseId', 'in', courseIds));
     },
-    [firestore, courseIds] // This query now correctly depends on the populated courseIds
+    [firestore, courseIds, userLoading] // This query now correctly depends on user loading state and courseIds.
   );
   const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
   const feedbackQuery = useMemoFirebase(
-    () => (user ? query(collectionGroup(firestore, 'feedback'), where('teacherId', '==', user.id)) : null),
-    [firestore, user]
+    () => {
+      // Guard: Do not create query until user is loaded.
+      if (userLoading || !user) return null;
+      return query(collectionGroup(firestore, 'feedback'), where('teacherId', '==', user.id));
+    },
+    [firestore, user, userLoading]
   );
   const { data: feedback, isLoading: feedbackLoading } = useCollection<Feedback>(feedbackQuery);
 
 
   const totalEnrollments = enrollments?.length ?? 0;
   
-  const isLoading = userLoading || coursesLoading; // Enrollment loading is secondary
+  const isLoading = userLoading || coursesLoading; // Enrollment loading is secondary but dependent
 
   return (
     <div className="flex flex-col gap-8">
