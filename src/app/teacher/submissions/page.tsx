@@ -13,8 +13,8 @@ export default function TeacherSubmissionsPage() {
 
   const submissionsQuery = useMemoFirebase(
     () => {
-      // Guard: Do not create the query until the user is fully loaded.
-      if (isUserLoading || !user) {
+      // Guard: Do not create the query until the user and their ID are fully loaded.
+      if (isUserLoading || !user?.id) {
         return null;
       }
       // Efficiently query all submissions across all courses for this teacher.
@@ -23,7 +23,7 @@ export default function TeacherSubmissionsPage() {
         where('teacherId', '==', user.id)
       );
     },
-    [firestore, user, isUserLoading] // Dependency array ensures this re-runs when user loads.
+    [firestore, user?.id, isUserLoading] // Dependency array ensures this re-runs when user loads.
   );
   
   const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
