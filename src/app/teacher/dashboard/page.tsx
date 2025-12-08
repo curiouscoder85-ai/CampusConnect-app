@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -102,7 +103,7 @@ export default function TeacherDashboardPage() {
 
   const totalEnrollments = enrollments?.length ?? 0;
   
-  const isLoading = userLoading || coursesLoading; // Enrollment loading is secondary but dependent
+  const isLoading = userLoading || coursesLoading;
 
   return (
     <div className="flex flex-col gap-8">
