@@ -19,12 +19,15 @@ export function DashboardStatCard({ title, value, description, icon: Icon, isLoa
       </CardHeader>
       <CardContent>
         {isLoading ? (
-            <Skeleton className="h-8 w-1/4" />
+            <Skeleton className="h-8 w-1/4 mt-1" />
         ) : (
             <div className="text-2xl font-bold">{value}</div>
         )}
-        {description && (
+        {description && !isLoading && (
           <p className="text-xs text-muted-foreground">{description}</p>
+        )}
+         {isLoading && (
+            <Skeleton className="h-4 w-1/2 mt-1" />
         )}
       </CardContent>
     </Card>
