@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -131,12 +132,17 @@ export default function SignupPage() {
     }
   };
   
-  const isSubmitDisabled = form.formState.isSubmitting || passwordStrength.level !== 'strong';
+  const isSubmitDisabled = form.formState.isSubmitting || passwordStrength.level === 'weak' || passwordStrength.level === 'none';
 
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm">
+    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background p-4">
+       <div className="bubbles">
+        {[...Array(12)].map((_, i) => (
+          <div key={i} className="bubble"></div>
+        ))}
+      </div>
+      <Card className="w-full max-w-sm glassmorphism z-10 shadow-2xl">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
             <Logo />
@@ -249,3 +255,5 @@ export default function SignupPage() {
     </main>
   );
 }
+
+    
