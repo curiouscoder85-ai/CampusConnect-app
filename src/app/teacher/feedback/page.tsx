@@ -15,7 +15,7 @@ export default function TeacherFeedbackPage() {
   const feedbackQuery = useMemoFirebase(
     () => {
       // This guard is critical. Do not create the query until the user object is available.
-      if (!user) {
+      if (isUserLoading || !user) {
         return null;
       }
       // This efficient query gets all feedback from all courses where the teacherId matches.
@@ -24,7 +24,7 @@ export default function TeacherFeedbackPage() {
         where('teacherId', '==', user.id)
       );
     },
-    [firestore, user]
+    [firestore, user, isUserLoading]
   );
   
   const { data: feedback, isLoading: feedbackLoading } = useCollection<Feedback>(feedbackQuery);
