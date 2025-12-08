@@ -11,7 +11,7 @@ import {
   SidebarMenuButton,                        
 } from '@/components/ui/sidebar';
 import Logo from '@/components/logo';
-import { LayoutDashboard, BookCopy, MessageSquare, ClipboardCheck } from 'lucide-react';
+import { LayoutDashboard, BookCopy } from 'lucide-react';
 
 const menuItems = [
   { href: '/teacher/dashboard', label: 'Dashboard', icon: LayoutDashboard },
