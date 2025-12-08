@@ -85,7 +85,9 @@ service cloud.firestore {
       match /feedback/{feedbackId} {
         allow get: if true; // Publicly readable
         allow list: if true; // Publicly listable
-        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && request.resource.data.teacherId == get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId;
+        allow create: if isSignedIn() 
+                        && request.resource.data.userId == request.auth.uid
+                        && request.resource.data.teacherId == get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId;
         allow update: if isTeacherOfCourse(courseId);
         allow delete: if isTeacherOfCourse(courseId);
       }
@@ -121,7 +123,7 @@ service cloud.firestore {
     
     // This allows collection group queries on feedback and submissions
     match /{path=**}/feedback/{feedbackId} {
-       allow list: if isRole('teacher');
+       allow list: if isRole('admin') || (isRole('teacher') && resource.data.teacherId == request.auth.uid);
     }
     
    match /{path=**}/submissions/{submissionId} {
