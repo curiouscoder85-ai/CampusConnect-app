@@ -9,26 +9,8 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
-
-function EnrolledCourseCard({ enrollment }: { enrollment: Enrollment }) {
-  const firestore = useFirestore();
-  const courseRef = useMemoFirebase(() => doc(firestore, 'courses', enrollment.courseId), [firestore, enrollment.courseId]);
-  const { data: course, isLoading } = useDoc<Course>(courseRef);
-
-  if (isLoading || !course) {
-    return <Skeleton className="h-96 w-full" />;
-  }
-
-  return (
-    <CourseCard
-      course={course}
-      link={`/student/courses/${course.id}`}
-      progress={enrollment.progress}
-      isEnrolled={true}
-      action="enroll"
-    />
-  );
-}
+import { useMemo } from 'react';
+import { SectionHeader } from '@/components/section-header';
 
 export default function StudentDashboardPage() {
   const { user, isUserLoading } = useUser();
@@ -40,16 +22,40 @@ export default function StudentDashboardPage() {
   );
   const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
-  const isLoading = isUserLoading || enrollmentsLoading;
+  // Fetch all courses at once for better performance
+  const coursesQuery = useMemoFirebase(() => query(collection(firestore, 'courses'), where('status', '==', 'approved')), [firestore]);
+  const { data: courses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
+
+  const isLoading = isUserLoading || enrollmentsLoading || coursesLoading;
+  
+  // Create a map of courses for quick lookup
+  const coursesMap = useMemo(() => {
+    if (!courses) return new Map();
+    return new Map(courses.map(c => [c.id, c]));
+  }, [courses]);
+  
+  // Filter and enrich enrollments with course data
+  const enrolledCourses = useMemo(() => {
+    if (!enrollments || !coursesMap) return [];
+    return enrollments
+        .map(enrollment => {
+            const course = coursesMap.get(enrollment.courseId);
+            if (!course) return null;
+            return {
+                ...course,
+                progress: enrollment.progress // Add progress to the course object
+            }
+        })
+        .filter(Boolean) as (Course & {progress: number})[];
+  }, [enrollments, coursesMap]);
+
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="font-headline text-3xl font-bold tracking-tight">
-          Welcome back, {user?.firstName || 'Student'}!
-        </h1>
-        <p className="text-muted-foreground">Let's continue your learning journey.</p>
-      </div>
+      <SectionHeader 
+        title={`Welcome back, ${user?.firstName || 'Student'}!`}
+        subtitle="Let's continue your learning journey."
+      />
 
       <Card>
         <CardHeader>
@@ -61,10 +67,17 @@ export default function StudentDashboardPage() {
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-96 w-full" />)}
             </div>
-          ) : enrollments && enrollments.length > 0 ? (
+          ) : enrolledCourses && enrolledCourses.length > 0 ? (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {enrollments.map((enrollment) => (
-                <EnrolledCourseCard key={enrollment.id} enrollment={enrollment} />
+              {enrolledCourses.map((course) => (
+                <CourseCard
+                    key={course.id}
+                    course={course}
+                    link={`/student/courses/${course.id}`}
+                    progress={course.progress}
+                    isEnrolled={true}
+                    action="enroll"
+                />
               ))}
             </div>
           ) : (

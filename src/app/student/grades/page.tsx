@@ -6,6 +6,7 @@ import { collectionGroup, query, where } from 'firebase/firestore';
 import type { Submission } from '@/lib/types';
 import { SubmissionsTable } from './_components/submissions-table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SectionHeader } from '@/components/section-header';
 
 export default function StudentGradesPage() {
   const firestore = useFirestore();
@@ -39,14 +40,11 @@ export default function StudentGradesPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-headline text-3xl font-bold tracking-tight">My Grades</h1>
-          <p className="text-muted-foreground">
-            View your grades for all submitted assignments.
-          </p>
-        </div>
-      </div>
+      <SectionHeader 
+        title="My Grades"
+        subtitle="View your grades for all submitted assignments."
+      />
+      
       {isLoading ? (
         <div className="space-y-4">
           <Skeleton className="h-12 w-full" />

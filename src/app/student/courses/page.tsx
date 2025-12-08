@@ -6,10 +6,11 @@ import { CourseCard } from '@/components/course-card';
 import { useCollection, useUser } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
-import type { Course, Enrollment } from '@/lib/types';
+import type { Course, Enrollment, User } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
+import { SectionHeader } from '@/components/section-header';
 
 export default function CourseCatalogPage() {
   const firestore = useFirestore();
@@ -35,6 +36,16 @@ export default function CourseCatalogPage() {
     [firestore, user]
   );
   const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
+  
+  // Query for all teachers
+  const teachersQuery = useMemoFirebase(() => query(collection(firestore, 'users'), where('role', '==', 'teacher')), [firestore]);
+  const { data: teachers, isLoading: teachersLoading } = useCollection<User>(teachersQuery);
+
+  // Create a map of teacher data for efficient lookup
+  const teachersMap = useMemo(() => {
+    if (!teachers) return new Map();
+    return new Map(teachers.map(t => [t.id, t]));
+  }, [teachers]);
 
   const enrolledCourseIds = useMemo(() => {
     return new Set(enrollments?.map(e => e.courseId) || []);
@@ -49,18 +60,15 @@ export default function CourseCatalogPage() {
     );
   }, [courses, searchTerm]);
 
-  const isLoading = coursesLoading || enrollmentsLoading;
+  const isLoading = coursesLoading || enrollmentsLoading || teachersLoading;
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="font-headline text-3xl font-bold tracking-tight">
-          Course Catalog
-        </h1>
-        <p className="text-muted-foreground">
-          Explore new skills and enroll in courses to expand your knowledge.
-        </p>
-      </div>
+      <SectionHeader 
+        title="Course Catalog"
+        subtitle="Explore new skills and enroll in courses to expand your knowledge."
+      />
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
         <Input
@@ -79,6 +87,7 @@ export default function CourseCatalogPage() {
           <CourseCard
             key={course.id}
             course={course}
+            teacher={teachersMap.get(course.teacherId)}
             link={`/student/courses/${course.id}`}
             action="enroll"
             isEnrolled={enrolledCourseIds.has(course.id)}

@@ -25,6 +25,7 @@ import { Progress } from './ui/progress';
 
 interface CourseCardProps {
   course: Course;
+  teacher?: User; // Teacher can now be passed as a prop
   link: string;
   action?: 'view' | 'enroll';
   isEnrolled?: boolean;
@@ -33,6 +34,7 @@ interface CourseCardProps {
 
 export function CourseCard({
   course,
+  teacher: teacherProp,
   link,
   action = 'view',
   isEnrolled = false,
@@ -41,9 +43,15 @@ export function CourseCard({
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
-  const teacherRef = useMemoFirebase(() => doc(firestore, 'users', course.teacherId), [firestore, course.teacherId]);
-  const { data: teacher, isLoading: teacherLoading } = useDoc<User>(teacherRef);
   
+  // Fetch teacher only if not provided as a prop
+  const teacherRef = useMemoFirebase(() => !teacherProp ? doc(firestore, 'users', course.teacherId) : null, [firestore, course.teacherId, teacherProp]);
+  const { data: teacherData, isLoading: teacherLoading } = useDoc<User>(teacherRef);
+  
+  const teacher = teacherProp || teacherData;
+  const isLoading = teacherLoading && !teacherProp;
+
+
   const getInitials = (name: string) => {
     if (!name) return '??';
     const names = name.split(' ');
@@ -138,7 +146,7 @@ export function CourseCard({
       </CardContent>
       <CardFooter className="flex flex-col items-start gap-4 p-4 pt-0">
         <div className="flex w-full items-center justify-between">
-          {teacherLoading ? (
+          {isLoading ? (
              <div className="flex items-center gap-2">
                 <Skeleton className="h-8 w-8 rounded-full" />
                 <Skeleton className="h-4 w-24" />
