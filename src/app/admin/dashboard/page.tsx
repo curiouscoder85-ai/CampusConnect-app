@@ -14,31 +14,34 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { useCollection } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
+import React from 'react';
 
 export default function AdminDashboardPage() {
   const firestore = useFirestore();
 
   const usersQuery = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
   const coursesQuery = useMemoFirebase(() => collection(firestore, 'courses'), [firestore]);
-  const pendingCoursesQuery = useMemoFirebase(() => query(collection(firestore, 'courses'), where('status', '==', 'pending')), [firestore]);
 
   const { data: users, isLoading: usersLoading } = useCollection(usersQuery);
   const { data: courses, isLoading: coursesLoading } = useCollection(coursesQuery);
-  const { data: pendingCourses, isLoading: pendingCoursesLoading } = useCollection(pendingCoursesQuery);
 
+  const { totalUsers, totalCourses, pendingCoursesCount, chartData } = React.useMemo(() => {
+    const totalUsers = users?.length ?? 0;
+    const totalCourses = courses?.length ?? 0;
+    const pendingCoursesCount = courses?.filter(c => c.status === 'pending').length ?? 0;
+    
+    const chartData = [
+      { name: 'Students', count: users?.filter(u => u.role === 'student').length ?? 0, fill: 'hsl(var(--chart-1))' },
+      { name: 'Teachers', count: users?.filter(u => u.role === 'teacher').length ?? 0, fill: 'hsl(var(--chart-2))' },
+      { name: 'Admins', count: users?.filter(u => u.role === 'admin').length ?? 0, fill: 'hsl(var(--chart-4))' },
+    ];
+    
+    return { totalUsers, totalCourses, pendingCoursesCount, chartData };
+  }, [users, courses]);
 
-  const totalUsers = users?.length ?? 0;
-  const totalCourses = courses?.length ?? 0;
-  const pendingCoursesCount = pendingCourses?.length ?? 0;
-
-  const chartData = [
-    { name: 'Students', count: users?.filter(u => u.role === 'student').length ?? 0, fill: 'hsl(var(--chart-1))' },
-    { name: 'Teachers', count: users?.filter(u => u.role === 'teacher').length ?? 0, fill: 'hsl(var(--chart-2))' },
-    { name: 'Admins', count: users?.filter(u => u.role === 'admin').length ?? 0, fill: 'hsl(var(--chart-4))' },
-  ];
-  const loading = usersLoading || coursesLoading || pendingCoursesLoading;
+  const loading = usersLoading || coursesLoading;
 
   return (
     <div className="flex flex-col gap-8">

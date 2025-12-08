@@ -10,8 +10,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AdminFeedbackPage() {
   const firestore = useFirestore();
-  // Admin needs to see all feedback, so a direct collection group query is appropriate here.
-  // The security rules will allow admins to perform this list operation.
   const feedbackQuery = useMemoFirebase(() => query(collectionGroup(firestore, 'feedback')), [firestore]);
   const { data: feedback, isLoading } = useCollection<Feedback>(feedbackQuery);
 
