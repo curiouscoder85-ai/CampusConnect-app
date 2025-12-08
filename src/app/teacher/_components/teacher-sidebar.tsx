@@ -11,11 +11,12 @@ import {
   SidebarMenuButton,                        
 } from '@/components/ui/sidebar';
 import Logo from '@/components/logo';
-import { LayoutDashboard, BookCopy } from 'lucide-react';
+import { LayoutDashboard, BookCopy, ListChecks } from 'lucide-react';
 
 const menuItems = [
   { href: '/teacher/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/teacher/courses', label: 'My Courses', icon: BookCopy },
+  { href: '/teacher/submissions', label: 'Submissions', icon: ListChecks },
 ];
 
 export function TeacherSidebar() {
