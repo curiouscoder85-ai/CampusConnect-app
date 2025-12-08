@@ -70,6 +70,7 @@ export type Feedback = {
   id: string;
   userId: string;
   courseId: string;
+  teacherId: string; // Denormalized for querying
   rating: number;
   comment: string;
   createdAt: any; // Using `any` for Firebase Timestamp compatibility

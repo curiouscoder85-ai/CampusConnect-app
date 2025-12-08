@@ -136,7 +136,7 @@ export default function StudentCoursePage({ params }: { params: Promise<{ id: st
     addDocumentNonBlocking(feedbackCol, {
       userId: user.id,
       courseId: id,
-      teacherId: course.teacherId, // Correctly add the teacherId to the feedback
+      teacherId: course.teacherId,
       rating: feedbackRating,
       comment: feedbackComment,
       createdAt: serverTimestamp(),
