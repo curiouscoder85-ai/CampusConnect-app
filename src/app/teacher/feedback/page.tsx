@@ -1,11 +1,10 @@
-
 'use client';
 
 import * as React from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collectionGroup, query, where } from 'firebase/firestore';
 import type { Feedback } from '@/lib/types';
-import { FeedbackTable } from '@/app/admin/feedback/_components/feedback-table'; // Re-using the admin component
+import { FeedbackTable } from '@/app/admin/feedback/_components/feedback-table';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function TeacherFeedbackPage() {
@@ -14,11 +13,9 @@ export default function TeacherFeedbackPage() {
 
   const feedbackQuery = useMemoFirebase(
     () => {
-      // This guard is critical. Do not create the query until the user object is available.
       if (isUserLoading || !user) {
         return null;
       }
-      // This efficient query gets all feedback from all courses where the teacherId matches.
       return query(
         collectionGroup(firestore, 'feedback'),
         where('teacherId', '==', user.id)

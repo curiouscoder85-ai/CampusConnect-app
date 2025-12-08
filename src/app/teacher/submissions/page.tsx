@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -14,7 +13,6 @@ export default function TeacherSubmissionsPage() {
 
   const submissionsQuery = useMemoFirebase(
     () => {
-      // This guard is critical. Do not create the query until the user object is available.
       if (isUserLoading || !user) {
         return null;
       }
@@ -23,22 +21,19 @@ export default function TeacherSubmissionsPage() {
         where('teacherId', '==', user.id)
       );
     },
-    [firestore, user, isUserLoading] // This query depends on the user object and its loading state
+    [firestore, user, isUserLoading]
   );
   
   const { data: submissions, isLoading: submissionsLoading, forceRefetch } = useCollection<Submission>(submissionsQuery);
 
-  // Combine both loading states. The page is loading if the user is loading OR submissions are loading.
   const isLoading = isUserLoading || submissionsLoading;
 
-  // Sort the submissions on the client-side after they are fetched.
   const sortedSubmissions = React.useMemo(() => {
     if (!submissions) return [];
-    // The `.slice()` creates a shallow copy to avoid mutating the original array
     return submissions.slice().sort((a, b) => {
       const dateA = a.submittedAt?.seconds || 0;
       const dateB = b.submittedAt?.seconds || 0;
-      return dateB - dateA; // Sort descending (newest first)
+      return dateB - dateA;
     });
   }, [submissions]);
 

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -70,7 +69,6 @@ export default function TeacherDashboardPage() {
 
   const coursesQuery = useMemoFirebase(
     () => {
-      // Guard: Do not create query until user is loaded.
       if (userLoading || !user) return null;
       return query(collection(firestore, 'courses'), where('teacherId', '==', user.id));
     },
@@ -82,17 +80,15 @@ export default function TeacherDashboardPage() {
 
   const enrollmentsQuery = useMemoFirebase(
     () => {
-        // Guard: Do not run the query until the courseIds array has been populated.
         if (userLoading || !firestore || courseIds.length === 0) return null;
         return query(collection(firestore, 'enrollments'), where('courseId', 'in', courseIds));
     },
-    [firestore, courseIds, userLoading] // This query now correctly depends on user loading state and courseIds.
+    [firestore, courseIds, userLoading]
   );
   const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
   const feedbackQuery = useMemoFirebase(
     () => {
-      // Guard: Do not create query until user is loaded.
       if (userLoading || !user) return null;
       return query(collectionGroup(firestore, 'feedback'), where('teacherId', '==', user.id));
     },

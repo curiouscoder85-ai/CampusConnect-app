@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -14,7 +13,6 @@ export default function StudentGradesPage() {
 
   const submissionsQuery = useMemoFirebase(
     () => {
-      // This is the critical change: Do not construct the query until the user is fully loaded.
       if (isUserLoading || !user) {
         return null;
       }
@@ -23,7 +21,7 @@ export default function StudentGradesPage() {
         where('userId', '==', user.id)
       );
     },
-    [firestore, user, isUserLoading] // The query now correctly depends on the loading state.
+    [firestore, user, isUserLoading]
   );
   
   const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
