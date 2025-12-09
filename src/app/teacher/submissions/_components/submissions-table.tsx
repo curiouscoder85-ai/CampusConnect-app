@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -11,9 +12,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { useDoc } from '@/firebase';
-import { doc } from 'firebase/firestore';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
 import { Download, Edit } from 'lucide-react';
@@ -30,27 +28,15 @@ const getInitials = (name: string) => {
   return name.substring(0, 2);
 };
 
-function SubmissionItem({ submission }: { submission: Submission }) {
-  const firestore = useFirestore();
-  
-  // Memoize document references to prevent unnecessary re-renders
-  const courseRef = useMemoFirebase(() => doc(firestore, 'courses', submission.courseId), [firestore, submission.courseId]);
-  const studentRef = useMemoFirebase(() => doc(firestore, 'users', submission.userId), [firestore, submission.userId]);
+interface SubmissionItemProps {
+    submission: Submission;
+    course?: Course;
+    student?: User;
+    assignmentTitle?: string;
+    isLoading: boolean;
+}
 
-  const { data: course, isLoading: courseLoading } = useDoc<Course>(courseRef);
-  const { data: student, isLoading: studentLoading } = useDoc<User>(studentRef);
-
-  const assignment = React.useMemo(() => {
-    if (!course) return null;
-    for (const module of course.modules || []) {
-      const found = module.content.find(c => c.id === submission.assignmentId);
-      if (found) return found;
-    }
-    return null;
-  }, [course, submission.assignmentId]);
-
-  const isLoading = courseLoading || studentLoading;
-  
+function SubmissionItem({ submission, course, student, assignmentTitle, isLoading }: SubmissionItemProps) {
   const formattedDate = submission.submittedAt?.seconds 
     ? formatDistanceToNow(new Date(submission.submittedAt.seconds * 1000), { addSuffix: true }) 
     : 'a few moments ago';
@@ -60,7 +46,7 @@ function SubmissionItem({ submission }: { submission: Submission }) {
       <TableCell>
         {isLoading ? <Skeleton className="h-4 w-32" /> : (
             <div>
-                 <div className="font-medium">{assignment?.title || 'Unknown Assignment'}</div>
+                 <div className="font-medium">{assignmentTitle || 'Unknown Assignment'}</div>
                  <div className="text-sm text-muted-foreground">{course?.title || 'Unknown Course'}</div>
             </div>
         )}
@@ -110,7 +96,44 @@ function SubmissionItem({ submission }: { submission: Submission }) {
   );
 }
 
-export function SubmissionsTable({ submissions }: { submissions: Submission[] }) {
+interface SubmissionsTableProps {
+  submissions: Submission[];
+  coursesMap: Map<string, Course>;
+  studentsMap: Map<string, User>;
+  isLoading: boolean;
+}
+
+
+export function SubmissionsTable({ submissions, coursesMap, studentsMap, isLoading }: SubmissionsTableProps) {
+    if (isLoading) {
+        return (
+            <div className="rounded-lg border">
+                <Table>
+                    <TableHeader>
+                    <TableRow>
+                        <TableHead>Assignment</TableHead>
+                        <TableHead>Student</TableHead>
+                        <TableHead>Submitted</TableHead>
+                        <TableHead>File</TableHead>
+                        <TableHead className="text-right">Grade</TableHead>
+                    </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <TableRow key={i}>
+                                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                                <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                                <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                                <TableCell><Skeleton className="h-8 w-24" /></TableCell>
+                                <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+        );
+    }
+  
   if (submissions.length === 0) {
     return (
       <div className="text-center py-12 border-2 border-dashed rounded-lg">
@@ -135,9 +158,21 @@ export function SubmissionsTable({ submissions }: { submissions: Submission[] })
           </TableRow>
         </TableHeader>
         <TableBody>
-          {submissions.map((item) => (
-              <SubmissionItem key={item.id} submission={item} />
-          ))}
+          {submissions.map((item) => {
+            const course = coursesMap.get(item.courseId);
+            const student = studentsMap.get(item.userId);
+            const assignmentTitle = course?.modules?.flatMap(m => m.content).find(c => c.id === item.assignmentId)?.title;
+            return (
+              <SubmissionItem 
+                key={item.id} 
+                submission={item} 
+                course={course}
+                student={student}
+                assignmentTitle={assignmentTitle}
+                isLoading={isLoading}
+              />
+            )
+          })}
         </TableBody>
       </Table>
     </div>

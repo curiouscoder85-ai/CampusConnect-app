@@ -1,11 +1,11 @@
+
 'use client';
 
 import * as React from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collectionGroup, query, where } from 'firebase/firestore';
-import type { Submission } from '@/lib/types';
+import { collection, collectionGroup, query, where } from 'firebase/firestore';
+import type { Submission, Course, User } from '@/lib/types';
 import { SubmissionsTable } from './_components/submissions-table';
-import { Skeleton } from '@/components/ui/skeleton';
 
 export default function TeacherSubmissionsPage() {
   const firestore = useFirestore();
@@ -13,31 +13,56 @@ export default function TeacherSubmissionsPage() {
 
   const submissionsQuery = useMemoFirebase(
     () => {
-      // Guard: Do not create the query until the user and their ID are fully loaded.
-      if (isUserLoading || !user?.id) {
-        return null;
-      }
-      // Efficiently query all submissions across all courses for this teacher.
+      if (isUserLoading || !user?.id) return null;
       return query(
         collectionGroup(firestore, 'submissions'),
         where('teacherId', '==', user.id)
       );
     },
-    [firestore, user?.id, isUserLoading] // Dependency array ensures this re-runs when user loads.
+    [firestore, user?.id, isUserLoading]
   );
   
   const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
 
-  const isLoading = isUserLoading || submissionsLoading;
+  const courseIds = React.useMemo(() => {
+    if (!submissions) return [];
+    return [...new Set(submissions.map(s => s.courseId))];
+  }, [submissions]);
+
+  const studentIds = React.useMemo(() => {
+    if (!submissions) return [];
+    return [...new Set(submissions.map(s => s.userId))];
+  }, [submissions]);
+
+
+  const coursesQuery = useMemoFirebase(() => {
+    if (courseIds.length === 0) return null;
+    return query(collection(firestore, 'courses'), where('__name__', 'in', courseIds));
+  }, [firestore, courseIds]);
+
+  const studentsQuery = useMemoFirebase(() => {
+    if (studentIds.length === 0) return null;
+    return query(collection(firestore, 'users'), where('__name__', 'in', studentIds));
+  }, [firestore, studentIds]);
+
+  const { data: courses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
+  const { data: students, isLoading: studentsLoading } = useCollection<User>(studentsQuery);
+
+  const coursesMap = React.useMemo(() => {
+    if (!courses) return new Map();
+    return new Map(courses.map(c => [c.id, c]));
+  }, [courses]);
+
+  const studentsMap = React.useMemo(() => {
+    if (!students) return new Map();
+    return new Map(students.map(s => [s.id, s]));
+  }, [students]);
+  
+  const isLoading = isUserLoading || submissionsLoading || (courseIds.length > 0 && coursesLoading) || (studentIds.length > 0 && studentsLoading);
 
   const sortedSubmissions = React.useMemo(() => {
     if (!submissions) return [];
-    // Sort by most recent submission first.
-    return submissions.slice().sort((a, b) => {
-      const dateA = a.submittedAt?.seconds || 0;
-      const dateB = b.submittedAt?.seconds || 0;
-      return dateB - dateA;
-    });
+    return submissions.slice().sort((a, b) => (b.submittedAt?.seconds || 0) - (a.submittedAt?.seconds || 0));
   }, [submissions]);
 
   return (
@@ -50,16 +75,12 @@ export default function TeacherSubmissionsPage() {
           </p>
         </div>
       </div>
-      {isLoading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </div>
-      ) : (
-        <SubmissionsTable submissions={sortedSubmissions} />
-      )}
+      <SubmissionsTable 
+        submissions={sortedSubmissions} 
+        coursesMap={coursesMap} 
+        studentsMap={studentsMap} 
+        isLoading={isLoading} 
+      />
     </div>
   );
 }

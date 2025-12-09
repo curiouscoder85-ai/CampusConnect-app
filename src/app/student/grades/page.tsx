@@ -1,11 +1,11 @@
+
 'use client';
 
 import * as React from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collectionGroup, query, where } from 'firebase/firestore';
-import type { Submission } from '@/lib/types';
+import { collection, collectionGroup, query, where } from 'firebase/firestore';
+import type { Submission, Course } from '@/lib/types';
 import { SubmissionsTable } from './_components/submissions-table';
-import { Skeleton } from '@/components/ui/skeleton';
 import { SectionHeader } from '@/components/section-header';
 
 export default function StudentGradesPage() {
@@ -14,20 +14,35 @@ export default function StudentGradesPage() {
 
   const submissionsQuery = useMemoFirebase(
     () => {
-      if (isUserLoading || !user) {
-        return null;
-      }
+      if (isUserLoading || !user?.id) return null;
       return query(
         collectionGroup(firestore, 'submissions'),
         where('userId', '==', user.id)
       );
     },
-    [firestore, user, isUserLoading]
+    [firestore, user?.id, isUserLoading]
   );
   
   const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
 
-  const isLoading = isUserLoading || submissionsLoading;
+  const courseIds = React.useMemo(() => {
+    if (!submissions) return [];
+    return [...new Set(submissions.map(s => s.courseId))];
+  }, [submissions]);
+
+  const coursesQuery = useMemoFirebase(() => {
+    if (courseIds.length === 0) return null;
+    return query(collection(firestore, 'courses'), where('__name__', 'in', courseIds));
+  }, [firestore, courseIds]);
+
+  const { data: courses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
+
+  const coursesMap = React.useMemo(() => {
+    if (!courses) return new Map();
+    return new Map(courses.map(c => [c.id, c]));
+  }, [courses]);
+
+  const isLoading = isUserLoading || submissionsLoading || (courseIds.length > 0 && coursesLoading);
 
   const sortedSubmissions = React.useMemo(() => {
     if (!submissions) return [];
@@ -44,17 +59,11 @@ export default function StudentGradesPage() {
         title="My Grades"
         subtitle="View your grades for all submitted assignments."
       />
-      
-      {isLoading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
-      ) : (
-        <SubmissionsTable submissions={sortedSubmissions} />
-      )}
+      <SubmissionsTable 
+        submissions={sortedSubmissions} 
+        coursesMap={coursesMap}
+        isLoading={isLoading}
+      />
     </div>
   );
 }

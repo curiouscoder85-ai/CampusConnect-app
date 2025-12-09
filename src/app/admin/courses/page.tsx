@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { useCollection } from '@/firebase';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { collection, doc, query } from 'firebase/firestore';
+import { collection, doc, query, where } from 'firebase/firestore';
 import type { Course, User } from '@/lib/types';
 import { CoursesTable } from './_components/courses-table';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,18 +18,17 @@ export default function AdminCoursesPage() {
   const coursesQuery = useMemoFirebase(() => query(collection(firestore, 'courses')), [firestore]);
   const { data: courses, isLoading: coursesLoading, forceRefetch: forceCoursesRefetch } = useCollection<Course>(coursesQuery);
 
-  const usersQuery = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
-  const { data: users, isLoading: usersLoading } = useCollection<User>(usersQuery);
+  // Optimized: Fetch only users with the 'teacher' role.
+  const teachersQuery = useMemoFirebase(() => query(collection(firestore, 'users'), where('role', '==', 'teacher')), [firestore]);
+  const { data: teachers, isLoading: teachersLoading } = useCollection<User>(teachersQuery);
 
   const teachersMap = React.useMemo(() => {
-    if (!users) return {};
-    return users.reduce((acc, user) => {
-      if (user.role === 'teacher') {
-        acc[user.id] = user;
-      }
+    if (!teachers) return {};
+    return teachers.reduce((acc, user) => {
+      acc[user.id] = user;
       return acc;
     }, {} as Record<string, User>);
-  }, [users]);
+  }, [teachers]);
   
   const handleUpdateStatus = (courseId: string, status: 'approved' | 'rejected') => {
     const courseRef = doc(firestore, 'courses', courseId);
@@ -41,7 +40,7 @@ export default function AdminCoursesPage() {
     forceCoursesRefetch();
   };
   
-  const isLoading = coursesLoading || usersLoading;
+  const isLoading = coursesLoading || teachersLoading;
 
   return (
     <div className="flex flex-col gap-8">
