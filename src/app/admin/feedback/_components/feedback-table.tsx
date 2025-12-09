@@ -11,15 +11,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useDoc } from '@/firebase';
-import { doc } from 'firebase/firestore';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Star, StarOff } from 'lucide-react';
+import { Star } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 interface FeedbackTableProps {
   feedback: Feedback[];
+  usersMap: Map<string, User>;
+  coursesMap: Map<string, Course>;
 }
 
 const getInitials = (name: string) => {
@@ -31,18 +30,8 @@ const getInitials = (name: string) => {
   return name.substring(0, 2);
 };
 
-function FeedbackItem({ item }: { item: Feedback }) {
-  const firestore = useFirestore();
-  const studentRef = useMemoFirebase(() => doc(firestore, 'users', item.userId), [firestore, item.userId]);
-  const courseRef = useMemoFirebase(() => doc(firestore, 'courses', item.courseId), [firestore, item.courseId]);
-  
-  const { data: student, isLoading: studentLoading } = useDoc<User>(studentRef);
-  const { data: course, isLoading: courseLoading } = useDoc<Course>(courseRef);
-
-  const isLoading = studentLoading || courseLoading;
-  
+function FeedbackItem({ item, student, course }: { item: Feedback, student?: User, course?: Course }) {
   const formattedDate = item.createdAt ? formatDistanceToNow(new Date(item.createdAt.seconds * 1000), { addSuffix: true }) : 'unknown date';
-
 
   return (
     <TableRow>
@@ -57,12 +46,7 @@ function FeedbackItem({ item }: { item: Feedback }) {
         </div>
       </TableCell>
       <TableCell>
-        {isLoading ? (
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-8 w-8 rounded-full" />
-            <Skeleton className="h-4 w-24" />
-          </div>
-        ) : student ? (
+        {student ? (
           <div className="flex items-center gap-3">
             <Avatar className="h-8 w-8">
               <AvatarImage src={student.avatar} alt={student.name} />
@@ -75,9 +59,7 @@ function FeedbackItem({ item }: { item: Feedback }) {
         )}
       </TableCell>
       <TableCell>
-        {isLoading ? (
-          <Skeleton className="h-4 w-32" />
-        ) : course ? (
+        {course ? (
           <span className="font-medium">{course.title}</span>
         ) : (
           <span className="text-muted-foreground">Unknown Course</span>
@@ -90,7 +72,7 @@ function FeedbackItem({ item }: { item: Feedback }) {
   );
 }
 
-export function FeedbackTable({ feedback }: FeedbackTableProps) {
+export function FeedbackTable({ feedback, usersMap, coursesMap }: FeedbackTableProps) {
   return (
     <div className="rounded-lg border">
       <Table>
@@ -104,9 +86,11 @@ export function FeedbackTable({ feedback }: FeedbackTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {feedback.map((item) => (
-            <FeedbackItem key={item.id} item={item} />
-          ))}
+          {feedback.map((item) => {
+            const student = usersMap.get(item.userId);
+            const course = coursesMap.get(item.courseId);
+            return <FeedbackItem key={item.id} item={item} student={student} course={course} />
+          })}
         </TableBody>
       </Table>
     </div>
