@@ -41,7 +41,8 @@ import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
-  name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
+  firstName: z.string().min(1, { message: 'First name is required.' }),
+  lastName: z.string().min(1, { message: 'Last name is required.' }),
   email: z.string().email({ message: 'Invalid email address.' }),
   password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
   role: z.enum(['student', 'teacher'], {
@@ -68,7 +69,8 @@ export default function SignupPage() {
     resolver: zodResolver(formSchema),
     mode: 'onChange',
     defaultValues: {
-      name: '',
+      firstName: '',
+      lastName: '',
       email: '',
       password: '',
       role: 'student',
@@ -110,8 +112,9 @@ export default function SignupPage() {
 
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    const fullName = `${values.firstName} ${values.lastName}`;
     try {
-      const user = await signup(values.name, values.email, values.password, values.role);
+      const user = await signup(fullName, values.email, values.password, values.role);
       if (user) {
         toast({
           title: 'Account Created',
@@ -152,20 +155,35 @@ export default function SignupPage() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Full Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="John Doe" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                 <FormField
+                    control={form.control}
+                    name="firstName"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>First Name</FormLabel>
+                        <FormControl>
+                        <Input placeholder="John" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="lastName"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Last Name</FormLabel>
+                        <FormControl>
+                        <Input placeholder="Doe" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+              </div>
               <FormField
                 control={form.control}
                 name="email"
@@ -208,9 +226,9 @@ export default function SignupPage() {
                     </FormControl>
                     <FormMessage />
                      {passwordStrength.level !== 'none' && (
-                        <div className="flex items-center gap-2 pt-1">
-                            <Progress value={passwordStrength.progress} className={cn("h-2", passwordStrength.color)} />
-                            <p className="text-xs text-muted-foreground">{passwordStrength.text}</p>
+                        <div className="flex items-center gap-2">
+                            <Progress value={passwordStrength.progress} className={cn("h-1.5", passwordStrength.color)} />
+                            <p className="text-xs text-muted-foreground whitespace-nowrap">{passwordStrength.text}</p>
                         </div>
                     )}
                   </FormItem>
@@ -256,4 +274,3 @@ export default function SignupPage() {
   );
 }
 
-    
