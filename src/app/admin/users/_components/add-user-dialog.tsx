@@ -29,14 +29,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useAuth } from '@/firebase/provider';
 import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { initializeApp, getApps, deleteApp } from 'firebase/app';
-import { firebaseConfig } from '@/firebase/config';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { setDocumentNonBlocking, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { nanoid } from 'nanoid';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -55,6 +52,7 @@ interface AddUserDialogProps {
 
 export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDialogProps) {
   const firestore = useFirestore();
+  const auth = useAuth(); // Use the auth instance from our provider
   const { toast } = useToast();
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -67,17 +65,14 @@ export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDial
   });
 
   const onSubmit = async (data: FormValues) => {
-    // This function should be handled by a backend service for security,
-    // but for this example, we'll proceed with a warning.
-    // Creating users on the client-side like this from an admin panel is not recommended.
-    
-    // We will create the user document, but we will not create the auth user here
-    // to avoid the complex auth state issues. The user will not be able to log in
-    // until their auth account is created through a secure administrative process.
-    const uid = nanoid(); // Generate a unique ID for the user document
-    const [firstName, lastName] = data.name.split(' ');
-    
     try {
+      // 1. Create the authentication user
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      const { uid } = userCredential.user;
+      
+      const [firstName, lastName] = data.name.split(' ');
+
+      // 2. Create the user document in Firestore
       const userDocRef = doc(firestore, 'users', uid);
       const userData = {
         id: uid,
@@ -89,23 +84,33 @@ export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDial
         avatar: `https://picsum.photos/seed/${uid}/200`,
       };
 
-      setDocumentNonBlocking(userDocRef, userData, {});
+      // Use setDoc which is fine here since we have the UID
+      await setDoc(userDocRef, userData);
 
       toast({
-        title: 'User Profile Created',
-        description: `A user profile for ${data.name} has been created. Note: Authentication account must be created separately.`,
+        title: 'User Created Successfully',
+        description: `The user account for ${data.name} has been created and can now log in.`,
       });
       onUserAdded();
       onOpenChange(false);
       form.reset();
 
     } catch (error: any) {
-        const contextualError = new FirestorePermissionError({
-          path: `users/${uid}`,
-          operation: 'create',
-          requestResourceData: data,
+        console.error("Error creating user:", error);
+        
+        // Handle specific Firebase auth errors
+        let errorMessage = 'Could not create user.';
+        if (error.code === 'auth/email-already-in-use') {
+            errorMessage = 'This email address is already in use.';
+        } else if (error.code === 'auth/weak-password') {
+            errorMessage = 'The password is too weak.';
+        }
+
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: errorMessage
         });
-        errorEmitter.emit('permission-error', contextualError);
     }
   };
   
@@ -121,7 +126,7 @@ export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDial
         <DialogHeader>
           <DialogTitle>Add New User</DialogTitle>
           <DialogDescription>
-            Create a new user profile. Note: This will not create a login account.
+            Create a new user profile and login account.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -157,7 +162,7 @@ export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDial
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Temporary Password</FormLabel>
+                  <FormLabel>Password</FormLabel>
                   <FormControl>
                     <Input type="password" placeholder="••••••••" {...field} />
                   </FormControl>
