@@ -16,25 +16,32 @@ export default function StudentDashboardPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
+  // 1. Fetch all necessary data in parallel
   const enrollmentsQuery = useMemoFirebase(
     () => (user ? query(collection(firestore, 'enrollments'), where('userId', '==', user.id)) : null),
     [firestore, user?.id]
   );
-  const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
-
-  // Fetch all courses at once for better performance
   const coursesQuery = useMemoFirebase(() => query(collection(firestore, 'courses'), where('status', '==', 'approved')), [firestore]);
-  const { data: courses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
+  const teachersQuery = useMemoFirebase(() => query(collection(firestore, 'users'), where('role', '==', 'teacher')), [firestore]);
 
-  const isLoading = isUserLoading || enrollmentsLoading || coursesLoading;
+  const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
+  const { data: courses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
+  const { data: teachers, isLoading: teachersLoading } = useCollection<User>(teachersQuery);
+
+  const isLoading = isUserLoading || enrollmentsLoading || coursesLoading || teachersLoading;
   
-  // Create a map of courses for quick lookup
+  // 2. Create maps for efficient data lookup
   const coursesMap = useMemo(() => {
     if (!courses) return new Map();
     return new Map(courses.map(c => [c.id, c]));
   }, [courses]);
+
+  const teachersMap = useMemo(() => {
+    if (!teachers) return new Map();
+    return new Map(teachers.map(t => [t.id, t]));
+  }, [teachers]);
   
-  // Filter and enrich enrollments with course data
+  // 3. Filter and enrich enrollments with course and teacher data
   const enrolledCourses = useMemo(() => {
     if (!enrollments || !coursesMap) return [];
     return enrollments
@@ -73,6 +80,7 @@ export default function StudentDashboardPage() {
                 <CourseCard
                     key={course.id}
                     course={course}
+                    teacher={teachersMap.get(course.teacherId)}
                     link={`/student/courses/${course.id}`}
                     progress={course.progress}
                     isEnrolled={true}
