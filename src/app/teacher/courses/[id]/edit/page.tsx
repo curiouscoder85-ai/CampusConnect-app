@@ -3,18 +3,18 @@
 import React from 'react';
 import { CourseEditor } from './_components/course-editor';
 
-export default function EditCoursePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = React.use(params);
-
-  React.useEffect(() => {
-    if (id) {
-      console.log(`Edit page loaded for course with ID: ${id}`);
-    }
-  }, [id]);
+export default function EditCoursePage({ params }: { params: { id: string } }) {
+  // The 'id' will be the actual course ID when editing,
+  // and the string 'new' when creating a new course.
+  const { id } = params;
 
   if (!id) {
     return null; // Or a loading/error state
   }
 
-  return <CourseEditor courseId={id} />;
+  // If the id is 'new', we pass `undefined` to the CourseEditor
+  // to signal that we are creating a new course.
+  const courseId = id === 'new' ? undefined : id;
+
+  return <CourseEditor courseId={courseId} />;
 }

@@ -43,10 +43,9 @@ type CourseFormValues = z.infer<typeof formSchema>;
 
 interface CourseFormProps {
   course?: Course;
-  onCourseCreated?: (courseId: string) => void;
 }
 
-export function CourseForm({ course, onCourseCreated }: CourseFormProps) {
+export function CourseForm({ course }: CourseFormProps) {
   const router = useRouter();
   const firestore = useFirestore();
   const { user } = useUser();
@@ -82,7 +81,7 @@ export function CourseForm({ course, onCourseCreated }: CourseFormProps) {
         const coursesCol = collection(firestore, 'courses');
         const randomImage = PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)];
         
-        // Use await here to get the new document reference
+        // Use await here to get the new document reference so we can redirect
         const newDocRef = await addDoc(coursesCol, {
           ...data,
           teacherId: user.id,
@@ -96,11 +95,8 @@ export function CourseForm({ course, onCourseCreated }: CourseFormProps) {
           description: `"${data.title}" has been submitted for approval. You can now add modules.`,
         });
         
-        if (onCourseCreated) {
-          onCourseCreated(newDocRef.id);
-        } else {
-           router.push(`/teacher/courses/${newDocRef.id}/edit`);
-        }
+        // Redirect to the edit page for the newly created course
+        router.push(`/teacher/courses/${newDocRef.id}/edit`);
       }
     } catch (error: any) {
       const contextualError = new FirestorePermissionError({
