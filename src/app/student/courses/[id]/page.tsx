@@ -171,7 +171,9 @@ export default function StudentCoursePage({ params }: { params: Promise<{ id: st
 
   const defaultOpenAccordion = course.modules && course.modules.length > 0 ? [course.modules[0].id] : [];
   
-  const assignments = course.modules?.flatMap(m => m.content.filter(c => c.type === 'quiz')) ?? [];
+  const assignments = useMemo(() => {
+    return course.modules?.flatMap(m => m.content.filter(c => c.type === 'quiz')) ?? [];
+  }, [course.modules]);
 
   return (
     <>
