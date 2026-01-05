@@ -16,7 +16,7 @@ export default function AdminCoursesPage() {
   const { toast } = useToast();
 
   const coursesQuery = useMemoFirebase(() => query(collection(firestore, 'courses')), [firestore]);
-  const { data: courses, isLoading: coursesLoading, forceRefetch: forceCoursesRefetch } = useCollection<Course>(coursesQuery);
+  const { data: courses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
 
   // Optimized: Fetch only users with the 'teacher' role.
   const teachersQuery = useMemoFirebase(() => query(collection(firestore, 'users'), where('role', '==', 'teacher')), [firestore]);
@@ -37,7 +37,7 @@ export default function AdminCoursesPage() {
       title: 'Course Updated',
       description: `The course has been ${status}.`,
     });
-    forceCoursesRefetch();
+    // Removed forceRefetch - the real-time listener will handle the update.
   };
   
   const isLoading = coursesLoading || teachersLoading;
