@@ -36,14 +36,15 @@ function GradeBadge({ grade }: { grade: number | null }) {
 interface SubmissionItemProps {
   submission: Submission;
   course?: Course;
-  assignmentTitle?: string;
   isLoading: boolean;
 }
 
-function SubmissionItem({ submission, course, assignmentTitle, isLoading }: SubmissionItemProps) {
+function SubmissionItem({ submission, course, isLoading }: SubmissionItemProps) {
   const formattedDate = submission.submittedAt?.seconds 
     ? formatDistanceToNow(new Date(submission.submittedAt.seconds * 1000), { addSuffix: true }) 
     : 'a few moments ago';
+  
+  const assignmentTitle = submission.assignmentTitle;
 
   return (
     <TableRow>
@@ -135,8 +136,7 @@ export function SubmissionsTable({ submissions, coursesMap, isLoading }: Submiss
         <TableBody>
           {submissions.map((item) => {
               const course = coursesMap.get(item.courseId);
-              const assignmentTitle = course?.modules?.flatMap(m => m.content).find(c => c.id === item.assignmentId)?.title;
-              return <SubmissionItem key={item.id} submission={item} course={course} assignmentTitle={assignmentTitle} isLoading={isLoading} />
+              return <SubmissionItem key={item.id} submission={item} course={course} isLoading={isLoading} />
           })}
         </TableBody>
       </Table>

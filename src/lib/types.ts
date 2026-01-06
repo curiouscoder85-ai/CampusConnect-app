@@ -57,6 +57,7 @@ export type Submission = {
     id: string;
     userId: string;
     assignmentId: string;
+    assignmentTitle?: string; // Denormalized assignment title
     courseId: string;
     teacherId: string; // Denormalized for querying
     comment: string;

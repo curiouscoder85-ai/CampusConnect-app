@@ -90,6 +90,7 @@ export function SubmitAssignmentDialog({
         userId: user.id,
         courseId: course.id,
         assignmentId: assignment.id,
+        assignmentTitle: assignment.title, // Denormalize the assignment title
         teacherId: course.teacherId,
         comment: data.comment || '',
         submittedAt: serverTimestamp(),
