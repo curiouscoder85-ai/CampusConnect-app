@@ -13,8 +13,8 @@ service firebase.storage {
     }
      // Rules for assignment submissions
     match /submissions/{courseId}/{studentId}/{assignmentId}/{submissionId}/{fileName} {
-      // Allow the student who submitted it or the teacher of the course to read.
-      allow read: if request.auth != null && (request.auth.uid == studentId || get(/databases/(default)/documents/courses/$(courseId)).data.teacherId == request.auth.uid);
+      // Allow the student who submitted it or a user with the 'teacher' role to read.
+      allow read: if request.auth != null && (request.auth.uid == studentId || get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'teacher');
       // Allow only the student to create/upload their submission.
       allow write: if request.auth != null && request.auth.uid == studentId
                      && request.resource.size < 10 * 1024 * 1024; // 10MB limit
