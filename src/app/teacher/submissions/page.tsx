@@ -27,30 +27,17 @@ export default function TeacherSubmissionsPage() {
   }, [firestore, user?.id, isUserLoading]);
   const { data: teacherCourses, isLoading: coursesLoading } = useCollection<Course>(teacherCoursesQuery);
 
-  // 2. Fetch submissions only for the selected course
+  // 2. Fetch submissions only for the selected course using a collection group query
   const submissionsQuery = useMemoFirebase(() => {
-    if (!selectedCourseId) return null;
-    // This is a direct subcollection query, not a collection group query
-    return query(collection(firestore, `courses/${selectedCourseId}/assignments`));
-  }, [firestore, selectedCourseId]);
-  
-  // We need all submissions from all assignments in the course
-  const courseSubmissionsQuery = useMemoFirebase(() => {
-    if (!selectedCourseId) return null;
-    return query(collection(firestore, `courses/${selectedCourseId}/submissions`));
-  },[firestore, selectedCourseId]);
-
-  const allSubmissionsQuery = useMemoFirebase(() => {
-    if (isUserLoading || !user?.id) return null;
+    if (!selectedCourseId || !user?.id) return null;
     return query(
       collectionGroup(firestore, 'submissions'),
-      where('teacherId', '==', user.id),
-      ...(selectedCourseId ? [where('courseId', '==', selectedCourseId)] : [])
+      where('courseId', '==', selectedCourseId),
+      where('teacherId', '==', user.id)
     );
-  }, [firestore, user?.id, isUserLoading, selectedCourseId]);
+  }, [firestore, selectedCourseId, user?.id]);
 
-  const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(allSubmissionsQuery);
-
+  const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
 
   // 3. Fetch the student data needed for the displayed submissions
   const studentIds = React.useMemo(() => {
@@ -64,7 +51,7 @@ export default function TeacherSubmissionsPage() {
   }, [firestore, studentIds]);
   const { data: students, isLoading: studentsLoading } = useCollection<User>(studentsQuery);
 
-  // 4. Create a map for efficient student data lookup
+  // 4. Create maps for efficient data lookup
   const studentsMap = React.useMemo(() => {
     if (!students) return new Map();
     return new Map(students.map((s) => [s.id, s]));
