@@ -127,7 +127,7 @@ service cloud.firestore {
     }
     
    match /{path=**}/submissions/{submissionId} {
-      allow list: if isRole('teacher') || isRole('student');
+      allow list: if isRole('teacher');
     }
   }
 }
