@@ -28,7 +28,7 @@ import { useAuth } from '@/components/auth-provider';
 import { useFirestore } from '@/firebase/provider';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { uploadImage } from '@/firebase/storage';
-import { collection, serverTimestamp, doc } from 'firebase/firestore';
+import { collection, serverTimestamp, doc, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { ContentItem, Course, User } from '@/lib/types';
 import { Loader2, UploadCloud } from 'lucide-react';
@@ -86,7 +86,8 @@ export function SubmitAssignmentDialog({
       const submissionsCol = collection(firestore, 'courses', course.id, 'assignments', assignment.id, 'submissions');
       
       // 1. Immediately create the submission document with an 'uploading' flag
-      const submissionDocRefPromise = addDocumentNonBlocking(submissionsCol, {
+      // We must AWAIT this so we get the real doc ref for the update later.
+      const submissionDocRef = await addDoc(submissionsCol, {
         userId: user.id,
         courseId: course.id,
         assignmentId: assignment.id,
@@ -101,14 +102,12 @@ export function SubmitAssignmentDialog({
       // Show immediate feedback to the user and close the dialog
       onSubmissionSuccess();
 
-      // 2. In the background, wait for the document to be created, then upload the file
-      const submissionDocRef = await submissionDocRefPromise;
-      if (!submissionDocRef) throw new Error("Failed to create submission document.");
-
+      // 2. In the background, upload the file
       const filePath = `submissions/${course.id}/${user.id}/${assignment.id}/${submissionDocRef.id}/${data.file.name}`;
       const fileUrl = await uploadImage(storage, data.file, filePath);
 
       // 3. Once uploaded, update the document with the file URL and remove the 'uploading' flag
+      // This can be non-blocking as it's a background update.
       updateDocumentNonBlocking(submissionDocRef, {
         fileUrl,
         uploading: false,
