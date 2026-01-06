@@ -1,7 +1,8 @@
+
 'use client';
 
 import * as React from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, query, where, doc, getDocs, Timestamp } from 'firebase/firestore';
 import type { Submission, Course, User, Assignment } from '@/lib/types';
 import { SubmissionsTable } from './_components/submissions-table';
@@ -13,10 +14,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { SectionHeader } from '@/components/section-header';
+import { useToast } from '@/hooks/use-toast';
 
 export default function TeacherSubmissionsPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
+  const { toast } = useToast();
   const [selectedCourseId, setSelectedCourseId] = React.useState<string | null>(null);
   const [submissions, setSubmissions] = React.useState<Submission[]>([]);
   const [students, setStudents] = React.useState<User[]>([]);
@@ -60,13 +63,28 @@ export default function TeacherSubmissionsPage() {
         for (const contentItem of module.content) {
           if (contentItem.type === 'assignment') {
             const submissionsRef = collection(firestore, `courses/${selectedCourseId}/assignments/${contentItem.id}/submissions`);
-            const submissionsSnapshot = await getDocs(submissionsRef);
-            
-            submissionsSnapshot.forEach(doc => {
-              const submissionData = { id: doc.id, ...doc.data() } as Submission;
-              allSubmissions.push(submissionData);
-              studentIds.add(submissionData.userId);
-            });
+            try {
+              const submissionsSnapshot = await getDocs(submissionsRef);
+              submissionsSnapshot.forEach(doc => {
+                const submissionData = { id: doc.id, ...doc.data() } as Submission;
+                allSubmissions.push(submissionData);
+                studentIds.add(submissionData.userId);
+              });
+            } catch (error: any) {
+               if (error.code === 'permission-denied') {
+                  const contextualError = new FirestorePermissionError({
+                    operation: 'list',
+                    path: submissionsRef.path,
+                  });
+                  errorEmitter.emit('permission-error', contextualError);
+                } else {
+                   toast({
+                    variant: 'destructive',
+                    title: 'Error Fetching Submissions',
+                    description: error.message || 'An unexpected error occurred.',
+                  });
+                }
+            }
           }
         }
       }
@@ -75,10 +93,26 @@ export default function TeacherSubmissionsPage() {
 
       // Fetch student data for the submissions
       if (studentIds.size > 0) {
-        const usersQuery = query(collection(firestore, 'users'), where('__name__', 'in', Array.from(studentIds)));
-        const usersSnapshot = await getDocs(usersQuery);
-        const studentData = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
-        setStudents(studentData);
+        try {
+          const usersQuery = query(collection(firestore, 'users'), where('__name__', 'in', Array.from(studentIds)));
+          const usersSnapshot = await getDocs(usersQuery);
+          const studentData = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+          setStudents(studentData);
+        } catch (error: any) {
+           if (error.code === 'permission-denied') {
+              const contextualError = new FirestorePermissionError({
+                operation: 'list',
+                path: 'users',
+              });
+              errorEmitter.emit('permission-error', contextualError);
+            } else {
+               toast({
+                variant: 'destructive',
+                title: 'Error Fetching Students',
+                description: error.message || 'An unexpected error occurred.',
+              });
+            }
+        }
       } else {
         setStudents([]);
       }
@@ -87,7 +121,7 @@ export default function TeacherSubmissionsPage() {
     };
 
     fetchSubmissionsForCourse();
-  }, [selectedCourseId, firestore, teacherCourses, fetchTrigger]);
+  }, [selectedCourseId, firestore, teacherCourses, fetchTrigger, toast]);
 
   // 3. Create maps for efficient data lookup in the table component
   const studentsMap = React.useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
