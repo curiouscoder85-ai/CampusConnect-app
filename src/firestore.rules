@@ -127,8 +127,6 @@ service cloud.firestore {
     }
     
     match /{path=**}/submissions/{submissionId} {
-      // Allow students and teachers to list submissions.
-      // The client-side code MUST filter by userId or teacherId.
       allow list: if isRole('student') || isRole('teacher');
     }
   }
