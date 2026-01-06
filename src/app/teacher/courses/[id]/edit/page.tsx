@@ -3,10 +3,10 @@
 import React from 'react';
 import { CourseEditor } from './_components/course-editor';
 
-export default function EditCoursePage({ params }: { params: { id: string } }) {
+export default function EditCoursePage({ params }: { params: Promise<{ id: string }> }) {
   // The 'id' will be the actual course ID when editing,
   // and the string 'new' when creating a new course.
-  const { id } = params;
+  const { id } = React.use(params);
 
   if (!id) {
     return null; // Or a loading/error state
