@@ -57,13 +57,14 @@ export function GradeSubmissionDialog({
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      grade: submission?.grade ?? undefined,
+      grade: undefined,
     },
   });
 
   React.useEffect(() => {
     if (submission) {
-      form.reset({ grade: submission.grade ?? undefined });
+      // Set the grade to an empty string if it's null/undefined to avoid uncontrolled input error
+      form.reset({ grade: submission.grade ?? '' });
     }
   }, [submission, form]);
 
