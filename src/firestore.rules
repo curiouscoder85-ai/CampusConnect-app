@@ -127,9 +127,7 @@ service cloud.firestore {
     }
     
    match /{path=**}/submissions/{submissionId} {
-      // A teacher can list submissions if they have the 'teacher' role.
-      // The query in the app code filters by teacherId, so this rule just needs to check the role.
-      allow list: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
+      allow list: if isRole('teacher') || isRole('student');
     }
   }
 }
