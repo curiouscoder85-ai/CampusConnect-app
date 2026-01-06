@@ -27,15 +27,14 @@ export default function TeacherSubmissionsPage() {
   }, [firestore, user?.id, isUserLoading]);
   const { data: teacherCourses, isLoading: coursesLoading } = useCollection<Course>(teacherCoursesQuery);
 
-  // 2. Fetch submissions only for the selected course using a collection group query
+  // 2. Fetch submissions only for the selected course using a subcollection query
   const submissionsQuery = useMemoFirebase(() => {
-    if (!selectedCourseId || !user?.id) return null;
+    if (!selectedCourseId) return null;
+    // The query is now correctly pointing to the subcollection without the redundant where clause.
     return query(
-      collectionGroup(firestore, 'submissions'),
-      where('courseId', '==', selectedCourseId),
-      where('teacherId', '==', user.id)
+      collection(firestore, 'courses', selectedCourseId, 'assignments', 'submissions')
     );
-  }, [firestore, selectedCourseId, user?.id]);
+  }, [firestore, selectedCourseId]);
 
   const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
 
