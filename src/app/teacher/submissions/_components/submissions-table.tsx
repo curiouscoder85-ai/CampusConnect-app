@@ -17,6 +17,7 @@ import { Download, Edit } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { GradeSubmissionDialog } from './grade-submission-dialog';
 
 const getInitials = (name: string) => {
   if (!name) return '??';
@@ -31,11 +32,11 @@ interface SubmissionItemProps {
     submission: Submission;
     course?: Course;
     student?: User;
-    assignmentTitle?: string;
     isLoading: boolean;
+    onGradeClick: (submission: Submission) => void;
 }
 
-function SubmissionItem({ submission, course, student, assignmentTitle, isLoading }: SubmissionItemProps) {
+function SubmissionItem({ submission, course, student, isLoading, onGradeClick }: SubmissionItemProps) {
   const formattedDate = submission.submittedAt?.seconds 
     ? formatDistanceToNow(new Date(submission.submittedAt.seconds * 1000), { addSuffix: true }) 
     : 'a few moments ago';
@@ -45,7 +46,7 @@ function SubmissionItem({ submission, course, student, assignmentTitle, isLoadin
       <TableCell>
         {isLoading ? <Skeleton className="h-4 w-32" /> : (
             <div>
-                 <div className="font-medium">{assignmentTitle || 'Unknown Assignment'}</div>
+                 <div className="font-medium">{submission.assignmentTitle || 'Unknown Assignment'}</div>
                  <div className="text-sm text-muted-foreground">{course?.title || 'Unknown Course'}</div>
             </div>
         )}
@@ -83,10 +84,12 @@ function SubmissionItem({ submission, course, student, assignmentTitle, isLoadin
         )}
       </TableCell>
       <TableCell className="text-right">
-        {submission.grade !== null ? (
-          <span className="font-bold text-lg">{submission.grade}</span>
+        {submission.grade !== null && submission.grade !== undefined ? (
+          <Button variant="outline" onClick={() => onGradeClick(submission)}>
+            <span className="font-bold text-lg">{submission.grade}</span>
+          </Button>
         ) : (
-          <Button variant="default" size="sm">
+          <Button variant="default" size="sm" onClick={() => onGradeClick(submission)}>
             <Edit className="mr-2 h-4 w-4" /> Grade
           </Button>
         )}
@@ -101,10 +104,13 @@ interface SubmissionsTableProps {
   studentsMap: Map<string, User>;
   isLoading: boolean;
   selectedCourseId: string | null;
+  onSubmissionsUpdate: () => void;
 }
 
 
-export function SubmissionsTable({ submissions, coursesMap, studentsMap, isLoading, selectedCourseId }: SubmissionsTableProps) {
+export function SubmissionsTable({ submissions, coursesMap, studentsMap, isLoading, selectedCourseId, onSubmissionsUpdate }: SubmissionsTableProps) {
+    const [gradingSubmission, setGradingSubmission] = React.useState<Submission | null>(null);
+    
     if (isLoading && selectedCourseId) {
         return (
             <div className="rounded-lg border">
@@ -157,35 +163,44 @@ export function SubmissionsTable({ submissions, coursesMap, studentsMap, isLoadi
   }
 
   return (
-    <div className="rounded-lg border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Assignment</TableHead>
-            <TableHead>Student</TableHead>
-            <TableHead>Submitted</TableHead>
-            <TableHead>File</TableHead>
-            <TableHead className="text-right">Grade</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {submissions.map((item) => {
-            const course = coursesMap.get(item.courseId);
-            const student = studentsMap.get(item.userId);
-            const assignmentTitle = course?.modules?.flatMap(m => m.content).find(c => c.id === item.assignmentId)?.title;
-            return (
-              <SubmissionItem 
-                key={item.id} 
-                submission={item} 
-                course={course}
-                student={student}
-                assignmentTitle={assignmentTitle}
-                isLoading={isLoading}
-              />
-            )
-          })}
-        </TableBody>
-      </Table>
-    </div>
+    <>
+      <div className="rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Assignment</TableHead>
+              <TableHead>Student</TableHead>
+              <TableHead>Submitted</TableHead>
+              <TableHead>File</TableHead>
+              <TableHead className="text-right">Grade</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {submissions.map((item) => {
+              const course = coursesMap.get(item.courseId);
+              const student = studentsMap.get(item.userId);
+              return (
+                <SubmissionItem 
+                  key={item.id} 
+                  submission={item} 
+                  course={course}
+                  student={student}
+                  isLoading={isLoading}
+                  onGradeClick={setGradingSubmission}
+                />
+              )
+            })}
+          </TableBody>
+        </Table>
+      </div>
+      <GradeSubmissionDialog 
+        submission={gradingSubmission}
+        isOpen={!!gradingSubmission}
+        onOpenChange={(isOpen) => {
+            if (!isOpen) setGradingSubmission(null);
+        }}
+        onGradeSaved={onSubmissionsUpdate}
+      />
+    </>
   );
 }

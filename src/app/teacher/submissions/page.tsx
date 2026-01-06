@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -22,6 +21,11 @@ export default function TeacherSubmissionsPage() {
   const [submissions, setSubmissions] = React.useState<Submission[]>([]);
   const [students, setStudents] = React.useState<User[]>([]);
   const [submissionsLoading, setSubmissionsLoading] = React.useState(false);
+  const [fetchTrigger, setFetchTrigger] = React.useState(0);
+
+  const forceRefetchSubmissions = () => {
+    setFetchTrigger(prev => prev + 1);
+  };
 
   // 1. Fetch the teacher's courses to populate the dropdown
   const teacherCoursesQuery = useMemoFirebase(() => {
@@ -83,7 +87,7 @@ export default function TeacherSubmissionsPage() {
     };
 
     fetchSubmissionsForCourse();
-  }, [selectedCourseId, firestore, teacherCourses]);
+  }, [selectedCourseId, firestore, teacherCourses, fetchTrigger]);
 
   // 3. Create maps for efficient data lookup in the table component
   const studentsMap = React.useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
@@ -131,6 +135,7 @@ export default function TeacherSubmissionsPage() {
         studentsMap={studentsMap} 
         isLoading={isLoading} 
         selectedCourseId={selectedCourseId}
+        onSubmissionsUpdate={forceRefetchSubmissions}
       />
     </div>
   );
