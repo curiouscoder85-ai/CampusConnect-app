@@ -31,7 +31,7 @@ import { SubmitAssignmentDialog } from './_components/submit-assignment-dialog';
 const contentIcons: Record<ContentItem['type'], React.ReactNode> = {
   video: <Video className="h-4 w-4 flex-shrink-0" />,
   reading: <Book className="h-4 w-4 flex-shrink-0" />,
-  quiz: <FileText className="h-4 w-4 flex-shrink-0" />,
+  assignment: <FileText className="h-4 w-4 flex-shrink-0" />,
 };
 
 export default function StudentCoursePage({ params }: { params: Promise<{ id: string }> }) {
@@ -172,7 +172,7 @@ export default function StudentCoursePage({ params }: { params: Promise<{ id: st
   const defaultOpenAccordion = course.modules && course.modules.length > 0 ? [course.modules[0].id] : [];
   
   const assignments = useMemo(() => {
-    return course.modules?.flatMap(m => m.content.filter(c => c.type === 'quiz')) ?? [];
+    return course.modules?.flatMap(m => m.content.filter(c => c.type === 'assignment')) ?? [];
   }, [course.modules]);
 
   return (

@@ -41,10 +41,10 @@ import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 
-const contentIcons = {
+const contentIcons: Record<ContentItem['type'], React.ReactNode> = {
   video: <Video className="h-4 w-4" />,
   reading: <FileText className="h-4 w-4" />,
-  quiz: <HelpCircle className="h-4 w-4" />,
+  assignment: <FileText className="h-4 w-4" />,
 };
 
 export function ModuleEditor({ course }: { course: Course }) {
@@ -219,7 +219,7 @@ export function ModuleEditor({ course }: { course: Course }) {
                     <SelectContent>
                       <SelectItem value="reading">Reading</SelectItem>
                       <SelectItem value="video">Video</SelectItem>
-                      <SelectItem value="quiz">Quiz</SelectItem>
+                      <SelectItem value="assignment">Assignment</SelectItem>
                     </SelectContent>
                   </Select>
             </div>

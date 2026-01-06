@@ -20,7 +20,7 @@ import Link from 'next/link';
 const contentIcons: Record<ContentItem['type'], React.ReactNode> = {
   video: <Video className="h-4 w-4" />,
   reading: <FileText className="h-4 w-4" />,
-  quiz: <HelpCircle className="h-4 w-4" />,
+  assignment: <FileText className="h-4 w-4" />,
 };
 
 export function CourseDetails({ courseId }: { courseId: string }) {

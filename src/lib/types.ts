@@ -20,7 +20,7 @@ export type Question = {
 export type ContentItem = {
   id: string;
   title: string;
-  type: 'video' | 'reading' | 'quiz';
+  type: 'video' | 'reading' | 'assignment';
   url?: string; // For video
   content?: string; // For reading or assignment content
   questions?: Question[]; // For quiz

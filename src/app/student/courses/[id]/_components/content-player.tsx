@@ -156,13 +156,9 @@ export function ContentPlayer({ contentItem, isOpen, onOpenChange, courseTitle }
         return <VideoPlayer url={contentItem.url || ''} />;
       case 'reading':
         return <ReadingPlayer content={contentItem.content || 'No content available.'} />;
-      case 'quiz':
-        // Mock questions if not provided
-        const questions = contentItem.questions || [
-            { id: 'q1', text: 'What does HTML stand for?', options: ['Hyper Trainer Marking Language', 'Hyper Text Markup Language', 'High Tech Modern Language'], correctAnswer: 1 },
-            { id: 'q2', text: 'Which CSS property controls the text size?', options: ['font-size', 'text-size', 'font-style'], correctAnswer: 0 }
-        ];
-        return <QuizPlayer questions={questions} />;
+      case 'assignment':
+         // Assignments are handled separately, this player is for viewable content.
+         return <p>This is an assignment. Please submit it through the "Assignments" section.</p>
       default:
         return <p>Unsupported content type.</p>;
     }
