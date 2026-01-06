@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, collectionGroup } from 'firebase/firestore';
 import type { Submission, Course, Enrollment } from '@/lib/types';
 import { SubmissionsTable } from './_components/submissions-table';
 import { SectionHeader } from '@/components/section-header';
@@ -100,3 +100,4 @@ export default function StudentGradesPage() {
     </div>
   );
 }
+
