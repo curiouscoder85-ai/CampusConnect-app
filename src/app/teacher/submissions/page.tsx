@@ -1,8 +1,9 @@
+
 'use client';
 
 import * as React from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { collection, query, where, doc, collectionGroup } from 'firebase/firestore';
 import type { Submission, Course, User } from '@/lib/types';
 import { SubmissionsTable } from './_components/submissions-table';
 import {
