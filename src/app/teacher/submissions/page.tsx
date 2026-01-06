@@ -3,8 +3,8 @@
 
 import * as React from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, collectionGroup } from 'firebase/firestore';
-import type { Submission, Course, User } from '@/lib/types';
+import { collection, query, where, doc, getDocs, Timestamp } from 'firebase/firestore';
+import type { Submission, Course, User, Assignment } from '@/lib/types';
 import { SubmissionsTable } from './_components/submissions-table';
 import {
   Select,
@@ -19,6 +19,9 @@ export default function TeacherSubmissionsPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const [selectedCourseId, setSelectedCourseId] = React.useState<string | null>(null);
+  const [submissions, setSubmissions] = React.useState<Submission[]>([]);
+  const [students, setStudents] = React.useState<User[]>([]);
+  const [submissionsLoading, setSubmissionsLoading] = React.useState(false);
 
   // 1. Fetch the teacher's courses to populate the dropdown
   const teacherCoursesQuery = useMemoFirebase(() => {
@@ -27,57 +30,74 @@ export default function TeacherSubmissionsPage() {
   }, [firestore, user?.id, isUserLoading]);
   const { data: teacherCourses, isLoading: coursesLoading } = useCollection<Course>(teacherCoursesQuery);
 
-  // 2. Fetch all submissions for the teacher using a collectionGroup query
-  const allSubmissionsQuery = useMemoFirebase(() => {
-    if (isUserLoading || !user?.id) return null;
-    // This query finds all submissions where the teacherId matches the current user.
-    // The security rules will enforce that this filter is present.
-    return query(
-      collectionGroup(firestore, 'submissions'),
-      where('teacherId', '==', user.id)
-    );
-  }, [firestore, user?.id, isUserLoading]);
+  // 2. When a course is selected, fetch all submissions for it
+  React.useEffect(() => {
+    if (!selectedCourseId) {
+      setSubmissions([]);
+      setStudents([]);
+      return;
+    }
 
-  const { data: allSubmissions, isLoading: submissionsLoading } = useCollection<Submission>(allSubmissionsQuery);
-  
-  // 3. Filter submissions client-side based on the selected course
-  const filteredSubmissions = React.useMemo(() => {
-    if (!allSubmissions) return [];
-    if (!selectedCourseId) return allSubmissions; // Show all if no course is selected
-    return allSubmissions.filter(s => s.courseId === selectedCourseId);
-  }, [allSubmissions, selectedCourseId]);
+    const fetchSubmissionsForCourse = async () => {
+      setSubmissionsLoading(true);
+      
+      const course = teacherCourses?.find(c => c.id === selectedCourseId);
+      if (!course || !course.modules) {
+        setSubmissions([]);
+        setSubmissionsLoading(false);
+        return;
+      }
+      
+      const allSubmissions: Submission[] = [];
+      const studentIds = new Set<string>();
 
+      // Iterate through modules and assignments to fetch submissions
+      for (const module of course.modules) {
+        for (const contentItem of module.content) {
+          if (contentItem.type === 'assignment') {
+            const submissionsRef = collection(firestore, `courses/${selectedCourseId}/assignments/${contentItem.id}/submissions`);
+            const submissionsSnapshot = await getDocs(submissionsRef);
+            
+            submissionsSnapshot.forEach(doc => {
+              const submissionData = { id: doc.id, ...doc.data() } as Submission;
+              allSubmissions.push(submissionData);
+              studentIds.add(submissionData.userId);
+            });
+          }
+        }
+      }
+      
+      setSubmissions(allSubmissions);
 
-  // 4. Fetch the student data needed for the displayed submissions
-  const studentIds = React.useMemo(() => {
-    if (!filteredSubmissions) return [];
-    return [...new Set(filteredSubmissions.map((s) => s.userId))];
-  }, [filteredSubmissions]);
+      // Fetch student data for the submissions
+      if (studentIds.size > 0) {
+        const usersQuery = query(collection(firestore, 'users'), where('__name__', 'in', Array.from(studentIds)));
+        const usersSnapshot = await getDocs(usersQuery);
+        const studentData = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+        setStudents(studentData);
+      } else {
+        setStudents([]);
+      }
 
-  const studentsQuery = useMemoFirebase(() => {
-    if (studentIds.length === 0) return null;
-    return query(collection(firestore, 'users'), where('__name__', 'in', studentIds));
-  }, [firestore, studentIds]);
-  const { data: students, isLoading: studentsLoading } = useCollection<User>(studentsQuery);
+      setSubmissionsLoading(false);
+    };
 
-  // 5. Create maps for efficient data lookup
-  const studentsMap = React.useMemo(() => {
-    if (!students) return new Map();
-    return new Map(students.map((s) => [s.id, s]));
-  }, [students]);
-  
-  const coursesMap = React.useMemo(() => {
-      if (!teacherCourses) return new Map();
-      return new Map(teacherCourses.map(c => [c.id, c]));
-  }, [teacherCourses]);
+    fetchSubmissionsForCourse();
+  }, [selectedCourseId, firestore, teacherCourses]);
 
-  const isLoading = isUserLoading || coursesLoading || submissionsLoading || studentsLoading;
-  
+  // 3. Create maps for efficient data lookup in the table component
+  const studentsMap = React.useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
+  const coursesMap = React.useMemo(() => new Map(teacherCourses?.map(c => [c.id, c]) || []), [teacherCourses]);
+
+  const isLoading = isUserLoading || coursesLoading || submissionsLoading;
+
   const sortedSubmissions = React.useMemo(() => {
-    if (!filteredSubmissions) return [];
-    return filteredSubmissions.slice().sort((a, b) => (b.submittedAt?.seconds || 0) - (a.submittedAt?.seconds || 0));
-  }, [filteredSubmissions]);
-
+    return submissions.slice().sort((a, b) => {
+       const dateA = a.submittedAt instanceof Timestamp ? a.submittedAt.toMillis() : a.submittedAt?.seconds * 1000 || 0;
+       const dateB = b.submittedAt instanceof Timestamp ? b.submittedAt.toMillis() : b.submittedAt?.seconds * 1000 || 0;
+       return dateB - dateA;
+    });
+  }, [submissions]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -87,7 +107,7 @@ export default function TeacherSubmissionsPage() {
       />
       
       <div className="max-w-xs">
-          <Select onValueChange={(value) => setSelectedCourseId(value === 'all' ? null : value)} >
+          <Select onValueChange={(value) => setSelectedCourseId(value)} >
             <SelectTrigger>
                 <SelectValue placeholder="Filter by course..." />
             </SelectTrigger>
@@ -96,7 +116,6 @@ export default function TeacherSubmissionsPage() {
                     <SelectItem value="loading" disabled>Loading courses...</SelectItem>
                 ) : (
                   <>
-                    <SelectItem value="all">All Courses</SelectItem>
                     {teacherCourses?.map(course => (
                         <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>
                     ))}
