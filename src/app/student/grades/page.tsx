@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, collectionGroup, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import type { Submission, Course, Enrollment } from '@/lib/types';
 import { SubmissionsTable } from './_components/submissions-table';
 import { SectionHeader } from '@/components/section-header';
@@ -30,7 +30,7 @@ export default function StudentGradesPage() {
       setIsLoading(true);
       return;
     }
-    if (!enrollments || enrollments.length === 0) {
+    if (!enrollments || enrollments.length === 0 || !user) {
       setSubmissions([]);
       setCourses([]);
       setIsLoading(false);
@@ -51,13 +51,14 @@ export default function StudentGradesPage() {
       // 2. Fetch all submissions for the user
       const submissionsQuery = query(
         collectionGroup(firestore, 'submissions'),
-        where('userId', '==', user!.id)
+        where('userId', '==', user.id)
       );
       const submissionsSnapshot = await getDocs(submissionsQuery);
       const allSubmissions = submissionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
       setSubmissions(allSubmissions);
 
       // 3. Fetch course data for the submitted courses
+      // We can reuse the courseIds from the enrollments query
       const coursesQuery = query(
         collection(firestore, 'courses'),
         where('__name__', 'in', courseIds)

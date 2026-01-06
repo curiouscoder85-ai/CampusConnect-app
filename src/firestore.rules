@@ -69,17 +69,23 @@ service cloud.firestore {
       allow update: if (isTeacherOfCourse(courseId) || isRole('admin'));
       allow delete: if (isTeacherOfCourse(courseId) || isRole('admin'));
       
-      match /assignments/{assignmentId}/submissions/{submissionId} {
-        function isStudentOwner() {
-            // Note: This rule uses `resource.data` which is for get/update/delete.
-            // For create, it should be `request.resource.data`.
-            return isSignedIn() && resource.data.userId == request.auth.uid;
-        }
+      match /assignments/{assignmentId} {
+        // Allow teacher to read assignments in their own course
+        allow get, list: if isTeacherOfCourse(courseId);
         
-        allow get: if isStudentOwner() || isTeacherOfCourse(courseId);
-        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-        allow update: if isTeacherOfCourse(courseId); // Allow teacher to update (e.g., for grading)
-        allow delete: if isStudentOwner() || isTeacherOfCourse(courseId);
+        match /submissions/{submissionId} {
+            function isStudentOwner() {
+                // Note: This rule uses `resource.data` which is for get/update/delete.
+                // For create, it should be `request.resource.data`.
+                let studentId = resource.data.userId;
+                return isSignedIn() && request.auth.uid == studentId;
+            }
+
+            allow get, list: if isTeacherOfCourse(courseId) || (isSignedIn() && request.auth.uid == resource.data.userId);
+            allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+            allow update: if isTeacherOfCourse(courseId); // Allow teacher to update (e.g., for grading)
+            allow delete: if isTeacherOfCourse(courseId) || (isSignedIn() && request.auth.uid == resource.data.userId);
+        }
       }
       
       match /feedback/{feedbackId} {
@@ -121,13 +127,9 @@ service cloud.firestore {
       allow delete: if isOwner(userId);
     }
     
-    // This allows collection group queries on feedback and submissions
+    // This allows collection group queries on feedback
     match /{path=**}/feedback/{feedbackId} {
        allow list: if isRole('admin') || (isRole('teacher') && resource.data.teacherId == request.auth.uid);
-    }
-    
-    match /{path=**}/submissions/{submissionId} {
-      allow list: if isRole('student') || isRole('teacher');
     }
   }
 }
