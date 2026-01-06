@@ -32,7 +32,7 @@ export default function TeacherCoursesPage() {
           <p className="text-muted-foreground">Manage your courses and course content.</p>
         </div>
         <Button asChild>
-          <Link href="/teacher/courses/new/edit">
+          <Link href="/teacher/courses/new">
             <PlusCircle className="mr-2 h-4 w-4" />
             Create New Course
           </Link>
@@ -63,7 +63,7 @@ export default function TeacherCoursesPage() {
             Click the button above to create your first course.
           </p>
           <Button asChild className="mt-4">
-            <Link href="/teacher/courses/new/edit">Create New Course</Link>
+            <Link href="/teacher/courses/new">Create New Course</Link>
           </Button>
         </div>
       )}

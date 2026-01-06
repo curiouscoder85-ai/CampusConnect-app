@@ -43,9 +43,10 @@ type CourseFormValues = z.infer<typeof formSchema>;
 
 interface CourseFormProps {
   course?: Course;
+  onCourseCreated?: (courseId: string) => void;
 }
 
-export function CourseForm({ course }: CourseFormProps) {
+export function CourseForm({ course, onCourseCreated }: CourseFormProps) {
   const router = useRouter();
   const firestore = useFirestore();
   const { user } = useUser();
@@ -95,8 +96,10 @@ export function CourseForm({ course }: CourseFormProps) {
           description: `"${data.title}" has been submitted for approval. You can now add modules.`,
         });
         
-        // Redirect to the edit page for the newly created course
-        router.push(`/teacher/courses/${newDocRef.id}/edit`);
+        // Use the callback to notify the parent component
+        if (onCourseCreated) {
+          onCourseCreated(newDocRef.id);
+        }
       }
     } catch (error: any) {
       const contextualError = new FirestorePermissionError({
