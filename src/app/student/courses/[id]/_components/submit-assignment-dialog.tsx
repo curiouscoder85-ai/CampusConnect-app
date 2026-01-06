@@ -26,7 +26,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth-provider';
 import { useFirestore } from '@/firebase/provider';
-import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { uploadImage } from '@/firebase/storage';
 import { collection, serverTimestamp, doc, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -85,43 +85,51 @@ export function SubmitAssignmentDialog({
     try {
       const submissionsCol = collection(firestore, 'courses', course.id, 'assignments', assignment.id, 'submissions');
       
-      // 1. Immediately create the submission document with an 'uploading' flag
-      // We must AWAIT this so we get the real doc ref for the update later.
+      // 1. Immediately create the submission document.
       const submissionDocRef = await addDoc(submissionsCol, {
         userId: user.id,
         courseId: course.id,
         assignmentId: assignment.id,
-        assignmentTitle: assignment.title, // Denormalize the assignment title
+        assignmentTitle: assignment.title,
         teacherId: course.teacherId,
         comment: data.comment || '',
         submittedAt: serverTimestamp(),
         grade: null,
-        uploading: true, // Indicate that the file is being uploaded
+        uploading: true, 
       });
 
-      // Show immediate feedback to the user and close the dialog
+      // 2. Show immediate feedback and close dialog.
       onSubmissionSuccess();
 
-      // 2. In the background, upload the file
+      // 3. Chain background tasks: upload file, then update the document.
+      // This promise is not awaited, allowing the UI to proceed.
       const filePath = `submissions/${course.id}/${user.id}/${assignment.id}/${submissionDocRef.id}/${data.file.name}`;
-      const fileUrl = await uploadImage(storage, data.file, filePath);
-
-      // 3. Once uploaded, update the document with the file URL and remove the 'uploading' flag
-      // This can be non-blocking as it's a background update.
-      updateDocumentNonBlocking(submissionDocRef, {
-        fileUrl,
-        uploading: false,
-      });
+      uploadImage(storage, data.file, filePath)
+        .then(fileUrl => {
+          // Once uploaded, update the doc with the URL and set uploading to false.
+          updateDocumentNonBlocking(submissionDocRef, {
+            fileUrl,
+            uploading: false,
+          });
+        })
+        .catch(error => {
+          console.error('Background upload/update failed:', error);
+          // Optionally, update the doc to show an error state.
+          updateDocumentNonBlocking(submissionDocRef, {
+             uploading: false,
+             fileUrl: 'ERROR', // Indicate a failed upload
+          });
+        });
 
     } catch (error: any) {
-      console.error('Submission failed:', error);
+      console.error('Initial submission creation failed:', error);
       toast({
         variant: 'destructive',
         title: 'Submission Failed',
-        description: error.message || 'Could not submit your assignment.',
+        description: error.message || 'Could not initiate your assignment submission.',
       });
     } finally {
-      // This is now less important as the dialog closes immediately, but good for cleanup
+      // This happens almost immediately now.
       setIsSubmitting(false);
     }
   };
