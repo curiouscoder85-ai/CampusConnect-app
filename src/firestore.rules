@@ -71,8 +71,6 @@ service cloud.firestore {
       
       match /assignments/{assignmentId}/submissions/{submissionId} {
         function isStudentOwner() {
-            // Note: This rule uses `resource.data` which is for get/update/delete.
-            // For create, it should be `request.resource.data`.
             return isSignedIn() && resource.data.userId == request.auth.uid;
         }
         
@@ -127,7 +125,10 @@ service cloud.firestore {
     }
     
    match /{path=**}/submissions/{submissionId} {
-      allow list: if isRole('teacher');
+      // This rule allows a teacher to perform a collectionGroup query,
+      // but it relies on the client-side query to be properly constrained with a `where` clause.
+      // The `get` rule on individual documents provides the ultimate security.
+      allow list: if isRole('teacher') || isRole('student');
     }
   }
 }

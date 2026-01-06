@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -101,11 +100,12 @@ interface SubmissionsTableProps {
   coursesMap: Map<string, Course>;
   studentsMap: Map<string, User>;
   isLoading: boolean;
+  selectedCourseId: string | null;
 }
 
 
-export function SubmissionsTable({ submissions, coursesMap, studentsMap, isLoading }: SubmissionsTableProps) {
-    if (isLoading) {
+export function SubmissionsTable({ submissions, coursesMap, studentsMap, isLoading, selectedCourseId }: SubmissionsTableProps) {
+    if (isLoading && selectedCourseId) {
         return (
             <div className="rounded-lg border">
                 <Table>
@@ -134,12 +134,23 @@ export function SubmissionsTable({ submissions, coursesMap, studentsMap, isLoadi
         );
     }
   
+  if (!selectedCourseId) {
+    return (
+        <div className="text-center py-12 border-2 border-dashed rounded-lg">
+            <h3 className="font-semibold">No Course Selected</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+                Please select a course from the dropdown above to view submissions.
+            </p>
+        </div>
+    )
+  }
+
   if (submissions.length === 0) {
     return (
       <div className="text-center py-12 border-2 border-dashed rounded-lg">
           <h3 className="font-semibold">No Submissions Found</h3>
           <p className="text-sm text-muted-foreground mt-1">
-              No students have submitted assignments for your courses yet.
+              No students have submitted assignments for this course yet.
           </p>
       </div>
     );

@@ -1,85 +1,117 @@
-
 'use client';
 
 import * as React from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, collectionGroup, query, where } from 'firebase/firestore';
+import { collection, query, where, doc } from 'firebase/firestore';
 import type { Submission, Course, User } from '@/lib/types';
 import { SubmissionsTable } from './_components/submissions-table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { SectionHeader } from '@/components/section-header';
 
 export default function TeacherSubmissionsPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
+  const [selectedCourseId, setSelectedCourseId] = React.useState<string | null>(null);
 
-  const submissionsQuery = useMemoFirebase(
-    () => {
-      if (isUserLoading || !user?.id) return null;
-      return query(
-        collectionGroup(firestore, 'submissions'),
-        where('teacherId', '==', user.id)
-      );
-    },
-    [firestore, user?.id, isUserLoading]
-  );
+  // 1. Fetch the teacher's courses to populate the dropdown
+  const teacherCoursesQuery = useMemoFirebase(() => {
+    if (isUserLoading || !user?.id) return null;
+    return query(collection(firestore, 'courses'), where('teacherId', '==', user.id));
+  }, [firestore, user?.id, isUserLoading]);
+  const { data: teacherCourses, isLoading: coursesLoading } = useCollection<Course>(teacherCoursesQuery);
+
+  // 2. Fetch submissions only for the selected course
+  const submissionsQuery = useMemoFirebase(() => {
+    if (!selectedCourseId) return null;
+    // This is a direct subcollection query, not a collection group query
+    return query(collection(firestore, `courses/${selectedCourseId}/assignments`));
+  }, [firestore, selectedCourseId]);
   
-  const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
+  // We need all submissions from all assignments in the course
+  const courseSubmissionsQuery = useMemoFirebase(() => {
+    if (!selectedCourseId) return null;
+    return query(collection(firestore, `courses/${selectedCourseId}/submissions`));
+  },[firestore, selectedCourseId]);
 
-  const courseIds = React.useMemo(() => {
-    if (!submissions) return [];
-    return [...new Set(submissions.map(s => s.courseId))];
-  }, [submissions]);
+  const allSubmissionsQuery = useMemoFirebase(() => {
+    if (isUserLoading || !user?.id) return null;
+    return query(
+      collectionGroup(firestore, 'submissions'),
+      where('teacherId', '==', user.id),
+      ...(selectedCourseId ? [where('courseId', '==', selectedCourseId)] : [])
+    );
+  }, [firestore, user?.id, isUserLoading, selectedCourseId]);
 
+  const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(allSubmissionsQuery);
+
+
+  // 3. Fetch the student data needed for the displayed submissions
   const studentIds = React.useMemo(() => {
     if (!submissions) return [];
-    return [...new Set(submissions.map(s => s.userId))];
+    return [...new Set(submissions.map((s) => s.userId))];
   }, [submissions]);
-
-
-  const coursesQuery = useMemoFirebase(() => {
-    if (courseIds.length === 0) return null;
-    return query(collection(firestore, 'courses'), where('__name__', 'in', courseIds));
-  }, [firestore, courseIds]);
 
   const studentsQuery = useMemoFirebase(() => {
     if (studentIds.length === 0) return null;
     return query(collection(firestore, 'users'), where('__name__', 'in', studentIds));
   }, [firestore, studentIds]);
-
-  const { data: courses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
   const { data: students, isLoading: studentsLoading } = useCollection<User>(studentsQuery);
 
-  const coursesMap = React.useMemo(() => {
-    if (!courses) return new Map();
-    return new Map(courses.map(c => [c.id, c]));
-  }, [courses]);
-
+  // 4. Create a map for efficient student data lookup
   const studentsMap = React.useMemo(() => {
     if (!students) return new Map();
-    return new Map(students.map(s => [s.id, s]));
+    return new Map(students.map((s) => [s.id, s]));
   }, [students]);
   
-  const isLoading = isUserLoading || submissionsLoading || (courseIds.length > 0 && coursesLoading) || (studentIds.length > 0 && studentsLoading);
+  const coursesMap = React.useMemo(() => {
+      if (!teacherCourses) return new Map();
+      return new Map(teacherCourses.map(c => [c.id, c]));
+  }, [teacherCourses]);
 
+  const isLoading = isUserLoading || coursesLoading || (selectedCourseId && (submissionsLoading || studentsLoading));
+  
   const sortedSubmissions = React.useMemo(() => {
     if (!submissions) return [];
     return submissions.slice().sort((a, b) => (b.submittedAt?.seconds || 0) - (a.submittedAt?.seconds || 0));
   }, [submissions]);
 
+
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-headline text-3xl font-bold tracking-tight">Student Submissions</h1>
-          <p className="text-muted-foreground">
-            Review and grade submissions for all of your courses.
-          </p>
-        </div>
+      <SectionHeader 
+        title="Student Submissions"
+        subtitle="Review and grade submissions for your courses."
+      />
+      
+      <div className="max-w-xs">
+          <Select onValueChange={setSelectedCourseId} value={selectedCourseId || undefined}>
+            <SelectTrigger>
+                <SelectValue placeholder="Select a course to view submissions" />
+            </SelectTrigger>
+            <SelectContent>
+                {coursesLoading ? (
+                    <SelectItem value="loading" disabled>Loading courses...</SelectItem>
+                ) : (
+                    teacherCourses?.map(course => (
+                        <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>
+                    ))
+                )}
+            </SelectContent>
+          </Select>
       </div>
+
       <SubmissionsTable 
         submissions={sortedSubmissions} 
         coursesMap={coursesMap} 
         studentsMap={studentsMap} 
         isLoading={isLoading} 
+        selectedCourseId={selectedCourseId}
       />
     </div>
   );
