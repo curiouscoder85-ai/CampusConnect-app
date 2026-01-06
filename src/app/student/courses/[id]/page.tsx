@@ -22,7 +22,7 @@ import type { Course, Enrollment, ContentItem } from '@/lib/types';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { ContentPlayer } from './_components/content-player';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
@@ -68,7 +68,7 @@ export default function StudentCoursePage({ params }: { params: Promise<{ id: st
     return course?.modules?.reduce((acc, module) => acc + module.content.length, 0) || 0;
   }, [course]);
 
-  const handleMarkAsComplete = (contentId: string) => {
+  const handleMarkAsComplete = useCallback((contentId: string) => {
     if (!enrollment || !course || totalContentItems === 0) return;
 
     const enrollmentRef = doc(firestore, 'enrollments', enrollment.id);
@@ -81,33 +81,10 @@ export default function StudentCoursePage({ params }: { params: Promise<{ id: st
     });
 
     forceRefetch(); // Force a refetch to update UI optimistically
-  };
-
-  if (courseLoading || enrollmentLoading) {
-    return (
-      <div className="mx-auto max-w-7xl">
-        <Skeleton className="h-10 w-3/4 mb-4" />
-        <Skeleton className="h-6 w-1/2 mb-8" />
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-4">
-             <Skeleton className="h-64 w-full" />
-             <Skeleton className="h-32 w-full" />
-          </div>
-          <div className="space-y-8">
-            <Skeleton className="h-48 w-full" />
-            <Skeleton className="h-48 w-full" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!course) {
-    notFound();
-  }
+  }, [enrollment, course, totalContentItems, firestore, forceRefetch]);
   
-  const handleEnroll = () => {
-    if (!user) return;
+  const handleEnroll = useCallback(() => {
+    if (!user || !course) return;
     const enrollmentsCol = collection(firestore, 'enrollments');
     addDocumentNonBlocking(enrollmentsCol, {
       userId: user.id,
@@ -118,9 +95,9 @@ export default function StudentCoursePage({ params }: { params: Promise<{ id: st
       completed: false
     });
     toast({ title: 'Enrolled!', description: `You have successfully enrolled in ${course.title}.` });
-  };
+  }, [user, course, firestore, toast]);
   
-  const handleFeedbackSubmit = () => {
+  const handleFeedbackSubmit = useCallback(() => {
     if (!user || !course || !feedbackComment || feedbackRating === 0) {
       toast({
         variant: 'destructive',
@@ -151,7 +128,35 @@ export default function StudentCoursePage({ params }: { params: Promise<{ id: st
     }).catch(() => {
         setIsSubmittingFeedback(false);
     });
-  };
+  }, [user, course, feedbackComment, feedbackRating, firestore, id, toast]);
+  
+  const assignments = useMemo(() => {
+    return course?.modules?.flatMap(m => m.content.filter(c => c.type === 'assignment')) ?? [];
+  }, [course?.modules]);
+
+
+  if (courseLoading || enrollmentLoading) {
+    return (
+      <div className="mx-auto max-w-7xl">
+        <Skeleton className="h-10 w-3/4 mb-4" />
+        <Skeleton className="h-6 w-1/2 mb-8" />
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+          <div className="lg:col-span-2 space-y-4">
+             <Skeleton className="h-64 w-full" />
+             <Skeleton className="h-32 w-full" />
+          </div>
+          <div className="space-y-8">
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-48 w-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!course) {
+    notFound();
+  }
 
   if (!enrollment) {
     return (
@@ -171,10 +176,6 @@ export default function StudentCoursePage({ params }: { params: Promise<{ id: st
 
   const defaultOpenAccordion = course.modules && course.modules.length > 0 ? [course.modules[0].id] : [];
   
-  const assignments = useMemo(() => {
-    return course.modules?.flatMap(m => m.content.filter(c => c.type === 'assignment')) ?? [];
-  }, [course.modules]);
-
   return (
     <>
       <div className="mx-auto max-w-7xl">
