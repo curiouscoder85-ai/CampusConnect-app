@@ -77,7 +77,7 @@ service cloud.firestore {
             function isStudentOwner() {
                 // Note: This rule uses `resource.data` which is for get/update/delete.
                 // For create, it should be `request.resource.data`.
-                let studentId = request.resource.data.userId;
+                let studentId = resource.data.userId;
                 return isSignedIn() && request.auth.uid == studentId;
             }
 
@@ -127,13 +127,9 @@ service cloud.firestore {
       allow delete: if isOwner(userId);
     }
     
-    // This allows collection group queries on feedback and submissions
+    // This allows collection group queries on feedback
     match /{path=**}/feedback/{feedbackId} {
        allow list: if isRole('admin') || (isRole('teacher') && resource.data.teacherId == request.auth.uid);
-    }
-    
-    match /{path=**}/submissions/{submissionId} {
-      allow list: if isRole('student') || isRole('teacher');
     }
   }
 }

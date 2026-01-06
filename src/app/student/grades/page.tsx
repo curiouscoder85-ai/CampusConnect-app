@@ -48,24 +48,31 @@ export default function StudentGradesPage() {
         return;
       }
 
-      // 2. Fetch all submissions for the user
+      // 2. Fetch all submissions for the user using a collectionGroup query
       const submissionsQuery = query(
         collectionGroup(firestore, 'submissions'),
         where('userId', '==', user.id)
       );
       const submissionsSnapshot = await getDocs(submissionsQuery);
       const allSubmissions = submissionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
-      setSubmissions(allSubmissions);
+      
+      // Filter submissions to only include those from enrolled courses
+      const enrolledSubmissions = allSubmissions.filter(sub => courseIds.includes(sub.courseId));
+      setSubmissions(enrolledSubmissions);
 
       // 3. Fetch course data for the submitted courses
-      // We can reuse the courseIds from the enrollments query
-      const coursesQuery = query(
-        collection(firestore, 'courses'),
-        where('__name__', 'in', courseIds)
-      );
-      const coursesSnapshot = await getDocs(coursesQuery);
-      const coursesData = coursesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course));
-      setCourses(coursesData);
+      if (enrolledSubmissions.length > 0) {
+        const submittedCourseIds = [...new Set(enrolledSubmissions.map(s => s.courseId))];
+         const coursesQuery = query(
+            collection(firestore, 'courses'),
+            where('__name__', 'in', submittedCourseIds)
+        );
+        const coursesSnapshot = await getDocs(coursesQuery);
+        const coursesData = coursesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course));
+        setCourses(coursesData);
+      } else {
+        setCourses([]);
+      }
       
       setIsLoading(false);
     };
@@ -95,9 +102,8 @@ export default function StudentGradesPage() {
       <SubmissionsTable 
         submissions={sortedSubmissions} 
         coursesMap={coursesMap}
-        isLoading={isLoading}
+        isLoading={isLoading || isUserLoading || enrollmentsLoading}
       />
     </div>
   );
 }
-
