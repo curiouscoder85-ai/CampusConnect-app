@@ -2,8 +2,8 @@
 'use client';
 
 import * as React from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, query, where, doc, getDocs, Timestamp, collectionGroup } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, getDocs, Timestamp, collectionGroup } from 'firebase/firestore';
 import type { Submission, Course, User } from '@/lib/types';
 import { SubmissionsTable } from './_components/submissions-table';
 import {
@@ -21,11 +21,9 @@ export default function TeacherSubmissionsPage() {
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
   const [selectedCourseId, setSelectedCourseId] = React.useState<string | null>(null);
-  const [submissions, setSubmissions] = React.useState<Submission[]>([]);
-  const [students, setStudents] = React.useState<User[]>([]);
-  const [submissionsLoading, setSubmissionsLoading] = React.useState(false);
+  
+  // Refetch trigger for when a grade is saved
   const [fetchTrigger, setFetchTrigger] = React.useState(0);
-
   const forceRefetchSubmissions = () => {
     setFetchTrigger(prev => prev + 1);
   };
@@ -37,78 +35,55 @@ export default function TeacherSubmissionsPage() {
   }, [firestore, user?.id, isUserLoading]);
   const { data: teacherCourses, isLoading: coursesLoading } = useCollection<Course>(teacherCoursesQuery);
 
-  // 2. When a course is selected (or for all courses), fetch relevant submissions
-  React.useEffect(() => {
-    if (!user) {
-      setSubmissions([]);
-      setStudents([]);
-      return;
+  // 2. Fetch submissions reactively based on selection
+  const submissionsQuery = useMemoFirebase(() => {
+    if (isUserLoading || !user?.id) return null;
+
+    if (selectedCourseId) {
+      // Query for a specific course
+      return query(
+        collectionGroup(firestore, 'submissions'),
+        where('teacherId', '==', user.id),
+        where('courseId', '==', selectedCourseId)
+      );
+    } else {
+      // Query for all submissions for the teacher
+      return query(
+        collectionGroup(firestore, 'submissions'),
+        where('teacherId', '==', user.id)
+      );
     }
+  }, [firestore, user?.id, isUserLoading, selectedCourseId, fetchTrigger]);
+  
+  const { data: submissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
 
-    const fetchSubmissionsForCourse = async () => {
-      setSubmissionsLoading(true);
+  // 3. Fetch student data based on the fetched submissions
+  const studentIds = React.useMemo(() => {
+    if (!submissions) return [];
+    return [...new Set(submissions.map(s => s.userId))];
+  }, [submissions]);
 
-      try {
-        let submissionsQuery;
-        // If a course is selected, filter by that course. Otherwise, fetch all for the teacher.
-        if (selectedCourseId) {
-            submissionsQuery = query(
-                collectionGroup(firestore, 'submissions'), 
-                where('teacherId', '==', user.id),
-                where('courseId', '==', selectedCourseId)
-            );
-        } else {
-            submissionsQuery = query(
-                collectionGroup(firestore, 'submissions'), 
-                where('teacherId', '==', user.id)
-            );
-        }
+  const studentsQuery = useMemoFirebase(() => {
+    if (studentIds.length === 0) return null;
+    return query(collection(firestore, 'users'), where('__name__', 'in', studentIds));
+  }, [firestore, studentIds]);
 
-        const submissionsSnapshot = await getDocs(submissionsQuery);
-        const allSubmissions = submissionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
-        
-        setSubmissions(allSubmissions);
-
-        const studentIds = new Set<string>(allSubmissions.map(s => s.userId));
-
-        // Fetch student data for the submissions
-        if (studentIds.size > 0) {
-            const usersQuery = query(collection(firestore, 'users'), where('__name__', 'in', Array.from(studentIds)));
-            const usersSnapshot = await getDocs(usersQuery);
-            const studentData = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
-            setStudents(studentData);
-        } else {
-            setStudents([]);
-        }
-
-      } catch (error: any) {
-        console.error("Error fetching submissions:", error);
-        toast({
-          variant: 'destructive',
-          title: 'Error Fetching Submissions',
-          description: error.message || 'An unexpected error occurred.',
-        });
-      } finally {
-        setSubmissionsLoading(false);
-      }
-    };
-
-    fetchSubmissionsForCourse();
-  }, [selectedCourseId, firestore, user, fetchTrigger, toast]);
-
-  // 3. Create maps for efficient data lookup in the table component
-  const studentsMap = React.useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
+  const { data: students, isLoading: studentsLoading } = useCollection<User>(studentsQuery);
+  
+  // 4. Create maps for efficient data lookup in the table component
+  const studentsMap = React.useMemo(() => new Map(students?.map((s) => [s.id, s]) || []), [students]);
   const coursesMap = React.useMemo(() => new Map(teacherCourses?.map(c => [c.id, c]) || []), [teacherCourses]);
-
-  const isLoading = isUserLoading || coursesLoading || submissionsLoading;
-
+  
   const sortedSubmissions = React.useMemo(() => {
+    if (!submissions) return [];
     return submissions.slice().sort((a, b) => {
        const dateA = a.submittedAt instanceof Timestamp ? a.submittedAt.toMillis() : a.submittedAt?.seconds * 1000 || 0;
        const dateB = b.submittedAt instanceof Timestamp ? b.submittedAt.toMillis() : b.submittedAt?.seconds * 1000 || 0;
        return dateB - dateA;
     });
   }, [submissions]);
+
+  const isLoading = isUserLoading || coursesLoading || submissionsLoading || (studentIds.length > 0 && studentsLoading);
 
   return (
     <div className="flex flex-col gap-8">
