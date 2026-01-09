@@ -126,7 +126,7 @@ service cloud.firestore {
 
     // This allows collection group queries on submissions
     match /{path=**}/submissions/{submissionId} {
-       allow list: if (isRole('teacher') && request.query.where.teacherId == request.auth.uid) || (isRole('student') && request.query.where.userId == request.auth.uid);
+       allow list: if (isRole('teacher') && resource.data.teacherId == request.auth.uid) || (isRole('student') && resource.data.userId == request.auth.uid);
     }
   }
 }

@@ -70,13 +70,13 @@ service cloud.firestore {
       
       match /submissions/{submissionId} {
         function isStudentOwner() {
-            let studentId = resource.data.userId;
-            return isSignedIn() && request.auth.uid == studentId;
+          return isSignedIn() && request.auth.uid == resource.data.userId;
         }
 
+        // Student can create their own submission. Teacher can read, update (grade), and delete any submission in their course.
         allow get, list: if isTeacherOfCourse(courseId) || (isSignedIn() && request.auth.uid == resource.data.userId);
-        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-        allow update: if isTeacherOfCourse(courseId); // Allow teacher to update (e.g., for grading)
+        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && request.resource.data.courseId == courseId;
+        allow update: if isTeacherOfCourse(courseId);
         allow delete: if isTeacherOfCourse(courseId) || (isSignedIn() && request.auth.uid == resource.data.userId);
       }
       
@@ -126,7 +126,7 @@ service cloud.firestore {
 
     // This allows collection group queries on submissions
     match /{path=**}/submissions/{submissionId} {
-       allow list: if (isRole('teacher') && request.query.where.teacherId == request.auth.uid) || (isRole('student') && request.query.where.userId == request.auth.uid);
+       allow list: if isRole('teacher') && resource.data.teacherId == request.auth.uid;
     }
   }
 }

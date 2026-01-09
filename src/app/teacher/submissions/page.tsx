@@ -35,19 +35,19 @@ export default function TeacherSubmissionsPage() {
   }, [firestore, user?.id, isUserLoading]);
   const { data: teacherCourses, isLoading: coursesLoading } = useCollection<Course>(teacherCoursesQuery);
 
-  // 2. Fetch submissions reactively based on selection
+  // 2. Fetch submissions reactively based on selection.
+  // This now queries the subcollection for the selected course, or uses a collectionGroup for 'all'.
   const submissionsQuery = useMemoFirebase(() => {
     if (isUserLoading || !user?.id) return null;
 
     if (selectedCourseId) {
-      // Query for a specific course
+      // Query the subcollection for a specific course
       return query(
-        collectionGroup(firestore, 'submissions'),
-        where('teacherId', '==', user.id),
-        where('courseId', '==', selectedCourseId)
+        collection(firestore, `courses/${selectedCourseId}/submissions`),
+        where('teacherId', '==', user.id) // Still good practice for rules
       );
     } else {
-      // Query for all submissions for the teacher
+      // Query for all submissions for the teacher using collectionGroup
       return query(
         collectionGroup(firestore, 'submissions'),
         where('teacherId', '==', user.id)

@@ -81,49 +81,44 @@ export function SubmitAssignmentDialog({
     }
 
     setIsSubmitting(true);
+    
+    // Correctly define the path to the submissions subcollection for the course.
+    const submissionsCol = collection(firestore, `courses/${course.id}/submissions`);
 
     try {
-      const submissionsCol = collection(firestore, `courses/${course.id}/submissions`);
+      // Show immediate feedback to the user
+      onSubmissionSuccess();
+      onOpenChange(false);
       
-      const submissionDocRefPromise = addDoc(submissionsCol, {
+      // Step 1: Create the initial document with an 'uploading' state.
+      const submissionDocRef = await addDoc(submissionsCol, {
         userId: user.id,
         courseId: course.id,
         contentId: assignment.id,
         assignmentTitle: assignment.title,
-        teacherId: course.teacherId,
+        teacherId: course.teacherId, // IMPORTANT: Denormalize teacherId for security rules.
         comment: data.comment || '',
         submittedAt: serverTimestamp(),
         grade: null,
         uploading: true, 
       });
 
-      onSubmissionSuccess();
-      onOpenChange(false);
-      
-      const submissionDocRef = await submissionDocRefPromise;
-
+      // Step 2: Upload the file to storage.
       const filePath = `submissions/${course.id}/${user.id}/${assignment.id}/${submissionDocRef.id}/${data.file.name}`;
-      uploadImage(storage, data.file, filePath)
-        .then(fileUrl => {
-          updateDocumentNonBlocking(submissionDocRef, {
-            fileUrl,
-            uploading: false,
-          });
-        })
-        .catch(error => {
-          console.error('Background upload/update failed:', error);
-          updateDocumentNonBlocking(submissionDocRef, {
-             uploading: false,
-             fileUrl: 'ERROR',
-          });
-        });
+      const fileUrl = await uploadImage(storage, data.file, filePath);
+
+      // Step 3: Update the document with the file URL and set uploading to false.
+      updateDocumentNonBlocking(submissionDocRef, {
+        fileUrl,
+        uploading: false,
+      });
 
     } catch (error: any) {
-      console.error('Initial submission creation failed:', error);
+      console.error('Submission failed:', error);
       toast({
         variant: 'destructive',
         title: 'Submission Failed',
-        description: error.message || 'Could not initiate your assignment submission.',
+        description: error.message || 'Could not save your assignment submission. Check permissions.',
       });
     } finally {
       setIsSubmitting(false);
