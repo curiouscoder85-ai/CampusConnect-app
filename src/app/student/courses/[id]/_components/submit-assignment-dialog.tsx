@@ -83,11 +83,9 @@ export function SubmitAssignmentDialog({
     setIsSubmitting(true);
 
     try {
-      // Correct path for the submission subcollection
       const submissionsCol = collection(firestore, `courses/${course.id}/submissions`);
       
-      // 1. Immediately create the submission document with an uploading state.
-      const submissionDocRef = await addDoc(submissionsCol, {
+      const submissionDocRefPromise = addDoc(submissionsCol, {
         userId: user.id,
         courseId: course.id,
         contentId: assignment.id,
@@ -99,15 +97,14 @@ export function SubmitAssignmentDialog({
         uploading: true, 
       });
 
-      // 2. Show immediate feedback and close dialog.
       onSubmissionSuccess();
       onOpenChange(false);
+      
+      const submissionDocRef = await submissionDocRefPromise;
 
-      // 3. Chain background tasks: upload file, then update the document.
       const filePath = `submissions/${course.id}/${user.id}/${assignment.id}/${submissionDocRef.id}/${data.file.name}`;
       uploadImage(storage, data.file, filePath)
         .then(fileUrl => {
-          // Once uploaded, update the doc with the URL and set uploading to false.
           updateDocumentNonBlocking(submissionDocRef, {
             fileUrl,
             uploading: false,
@@ -115,10 +112,9 @@ export function SubmitAssignmentDialog({
         })
         .catch(error => {
           console.error('Background upload/update failed:', error);
-          // Optionally, update the doc to show an error state.
           updateDocumentNonBlocking(submissionDocRef, {
              uploading: false,
-             fileUrl: 'ERROR', // Indicate a failed upload
+             fileUrl: 'ERROR',
           });
         });
 
@@ -130,7 +126,6 @@ export function SubmitAssignmentDialog({
         description: error.message || 'Could not initiate your assignment submission.',
       });
     } finally {
-      // This happens almost immediately now.
       setIsSubmitting(false);
     }
   };

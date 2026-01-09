@@ -8,7 +8,6 @@
  * - /users/{userId}/chatHistory/{messageId}: Stores chat messages for a user. Only the user can read/write their own history.
  * - /courses/{courseId}: Stores course information. Only the teacher who created the course can modify it.
  * - /users/{userId}/certificates/{certificateId}: Stores certificates earned by users. Only the user can access their own certificates.
- * - /courses/{courseId}/assignments/{assignmentId}: Stores assignments for a course.
  * - /courses/{courseId}/submissions/{submissionId}: Stores student submissions for an assignment.
  * - /courses/{courseId}/feedback/{feedbackId}: Stores feedback for each course. Only the teacher who created the course can manage feedback. Students can create feedback.
  * - /enrollments/{enrollmentId}: Stores enrollment records. Only the student or the teacher of the course can access. Student can update their own progress.
