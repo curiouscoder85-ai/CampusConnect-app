@@ -70,8 +70,7 @@ service cloud.firestore {
       
       match /submissions/{submissionId} {
         function isStudentOwner() {
-            let studentId = resource.data.userId;
-            return isSignedIn() && request.auth.uid == studentId;
+            return isSignedIn() && request.auth.uid == resource.data.userId;
         }
 
         allow get, list: if isTeacherOfCourse(courseId) || (isSignedIn() && request.auth.uid == resource.data.userId);
