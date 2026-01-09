@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -71,7 +72,7 @@ export function GradeSubmissionDialog({
   const onSubmit = (data: FormValues) => {
     if (!submission) return;
 
-    const submissionRef = doc(firestore, `courses/${submission.courseId}/assignments/${submission.assignmentId}/submissions/${submission.id}`);
+    const submissionRef = doc(firestore, `courses/${submission.courseId}/submissions/${submission.id}`);
     
     updateDocumentNonBlocking(submissionRef, { grade: data.grade });
     

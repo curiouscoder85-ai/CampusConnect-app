@@ -56,7 +56,7 @@ export type Enrollment = {
 export type Submission = {
     id: string;
     userId: string;
-    assignmentId: string;
+    contentId: string; // ID of the assignment content item
     assignmentTitle?: string; // Denormalized assignment title
     courseId: string;
     teacherId: string; // Denormalized for querying

@@ -3,8 +3,8 @@
 
 import * as React from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, query, where, doc, getDocs, Timestamp } from 'firebase/firestore';
-import type { Submission, Course, User, Assignment } from '@/lib/types';
+import { collection, query, where, doc, getDocs, Timestamp, collectionGroup } from 'firebase/firestore';
+import type { Submission, Course, User } from '@/lib/types';
 import { SubmissionsTable } from './_components/submissions-table';
 import {
   Select,
@@ -37,9 +37,9 @@ export default function TeacherSubmissionsPage() {
   }, [firestore, user?.id, isUserLoading]);
   const { data: teacherCourses, isLoading: coursesLoading } = useCollection<Course>(teacherCoursesQuery);
 
-  // 2. When a course is selected, fetch all submissions for it
+  // 2. When a course is selected (or for all courses), fetch relevant submissions
   React.useEffect(() => {
-    if (!selectedCourseId) {
+    if (!user) {
       setSubmissions([]);
       setStudents([]);
       return;
@@ -47,81 +47,54 @@ export default function TeacherSubmissionsPage() {
 
     const fetchSubmissionsForCourse = async () => {
       setSubmissionsLoading(true);
-      
-      const course = teacherCourses?.find(c => c.id === selectedCourseId);
-      if (!course || !course.modules) {
-        setSubmissions([]);
+
+      try {
+        let submissionsQuery;
+        // If a course is selected, filter by that course. Otherwise, fetch all for the teacher.
+        if (selectedCourseId) {
+            submissionsQuery = query(
+                collectionGroup(firestore, 'submissions'), 
+                where('teacherId', '==', user.id),
+                where('courseId', '==', selectedCourseId)
+            );
+        } else {
+            submissionsQuery = query(
+                collectionGroup(firestore, 'submissions'), 
+                where('teacherId', '==', user.id)
+            );
+        }
+
+        const submissionsSnapshot = await getDocs(submissionsQuery);
+        const allSubmissions = submissionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
+        
+        setSubmissions(allSubmissions);
+
+        const studentIds = new Set<string>(allSubmissions.map(s => s.userId));
+
+        // Fetch student data for the submissions
+        if (studentIds.size > 0) {
+            const usersQuery = query(collection(firestore, 'users'), where('__name__', 'in', Array.from(studentIds)));
+            const usersSnapshot = await getDocs(usersQuery);
+            const studentData = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+            setStudents(studentData);
+        } else {
+            setStudents([]);
+        }
+
+      } catch (error: any) {
+        console.error("Error fetching submissions:", error);
+        toast({
+          variant: 'destructive',
+          title: 'Error Fetching Submissions',
+          description: error.message || 'An unexpected error occurred.',
+        });
+      } finally {
         setSubmissionsLoading(false);
-        return;
       }
-      
-      const allSubmissions: Submission[] = [];
-      const studentIds = new Set<string>();
-
-      // Iterate through modules and assignments to fetch submissions
-      for (const module of course.modules) {
-        for (const contentItem of module.content) {
-          if (contentItem.type === 'assignment') {
-            const submissionsRef = collection(firestore, `courses/${selectedCourseId}/assignments/${contentItem.id}/submissions`);
-            try {
-              const submissionsSnapshot = await getDocs(submissionsRef);
-              submissionsSnapshot.forEach(doc => {
-                const submissionData = { id: doc.id, ...doc.data() } as Submission;
-                allSubmissions.push(submissionData);
-                studentIds.add(submissionData.userId);
-              });
-            } catch (error: any) {
-               if (error.code === 'permission-denied') {
-                  const contextualError = new FirestorePermissionError({
-                    operation: 'list',
-                    path: submissionsRef.path,
-                  });
-                  errorEmitter.emit('permission-error', contextualError);
-                } else {
-                   toast({
-                    variant: 'destructive',
-                    title: 'Error Fetching Submissions',
-                    description: error.message || 'An unexpected error occurred.',
-                  });
-                }
-            }
-          }
-        }
-      }
-      
-      setSubmissions(allSubmissions);
-
-      // Fetch student data for the submissions
-      if (studentIds.size > 0) {
-        try {
-          const usersQuery = query(collection(firestore, 'users'), where('__name__', 'in', Array.from(studentIds)));
-          const usersSnapshot = await getDocs(usersQuery);
-          const studentData = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
-          setStudents(studentData);
-        } catch (error: any) {
-           if (error.code === 'permission-denied') {
-              const contextualError = new FirestorePermissionError({
-                operation: 'list',
-                path: 'users',
-              });
-              errorEmitter.emit('permission-error', contextualError);
-            } else {
-               toast({
-                variant: 'destructive',
-                title: 'Error Fetching Students',
-                description: error.message || 'An unexpected error occurred.',
-              });
-            }
-        }
-      } else {
-        setStudents([]);
-      }
-
-      setSubmissionsLoading(false);
     };
 
     fetchSubmissionsForCourse();
-  }, [selectedCourseId, firestore, teacherCourses, fetchTrigger, toast]);
+  }, [selectedCourseId, firestore, user, fetchTrigger, toast]);
 
   // 3. Create maps for efficient data lookup in the table component
   const studentsMap = React.useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
@@ -145,7 +118,7 @@ export default function TeacherSubmissionsPage() {
       />
       
       <div className="max-w-xs">
-          <Select onValueChange={(value) => setSelectedCourseId(value)} >
+          <Select onValueChange={(value) => setSelectedCourseId(value === 'all' ? null : value)} >
             <SelectTrigger>
                 <SelectValue placeholder="Filter by course..." />
             </SelectTrigger>
@@ -154,6 +127,7 @@ export default function TeacherSubmissionsPage() {
                     <SelectItem value="loading" disabled>Loading courses...</SelectItem>
                 ) : (
                   <>
+                    <SelectItem value="all">All Courses</SelectItem>
                     {teacherCourses?.map(course => (
                         <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>
                     ))}

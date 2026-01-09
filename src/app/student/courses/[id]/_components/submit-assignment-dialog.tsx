@@ -71,11 +71,11 @@ export function SubmitAssignmentDialog({
   });
 
   const onSubmit = async (data: FormValues) => {
-    if (!storage) {
+    if (!storage || !data.file) {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Storage service is not available. Please try again later.',
+        description: 'Storage service is not available or file is missing.',
       });
       return;
     }
@@ -83,13 +83,14 @@ export function SubmitAssignmentDialog({
     setIsSubmitting(true);
 
     try {
-      const submissionsCol = collection(firestore, 'courses', course.id, 'assignments', assignment.id, 'submissions');
+      // Correct path for the submission subcollection
+      const submissionsCol = collection(firestore, `courses/${course.id}/submissions`);
       
-      // 1. Immediately create the submission document.
+      // 1. Immediately create the submission document with an uploading state.
       const submissionDocRef = await addDoc(submissionsCol, {
         userId: user.id,
         courseId: course.id,
-        assignmentId: assignment.id,
+        contentId: assignment.id,
         assignmentTitle: assignment.title,
         teacherId: course.teacherId,
         comment: data.comment || '',
@@ -100,9 +101,9 @@ export function SubmitAssignmentDialog({
 
       // 2. Show immediate feedback and close dialog.
       onSubmissionSuccess();
+      onOpenChange(false);
 
       // 3. Chain background tasks: upload file, then update the document.
-      // This promise is not awaited, allowing the UI to proceed.
       const filePath = `submissions/${course.id}/${user.id}/${assignment.id}/${submissionDocRef.id}/${data.file.name}`;
       uploadImage(storage, data.file, filePath)
         .then(fileUrl => {
@@ -192,7 +193,7 @@ export function SubmitAssignmentDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting || !form.formState.isValid}>
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
