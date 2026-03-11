@@ -1,6 +1,7 @@
 'use client';
 
-import Link from 'next/link';
+import Link from 'next/navigation';
+import LinkActual from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Sidebar,
@@ -11,12 +12,13 @@ import {
   SidebarMenuButton,                        
 } from '@/components/ui/sidebar';
 import Logo from '@/components/logo';
-import { LayoutDashboard, BookCopy, ListChecks } from 'lucide-react';
+import { LayoutDashboard, BookCopy, ListChecks, MessageSquare } from 'lucide-react';
 
 const menuItems = [
   { href: '/teacher/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/teacher/courses', label: 'My Courses', icon: BookCopy },
   { href: '/teacher/submissions', label: 'Submissions', icon: ListChecks },
+  { href: '/teacher/feedback', label: 'Feedback Analysis', icon: MessageSquare },
 ];
 
 export function TeacherSidebar() {
@@ -36,10 +38,10 @@ export function TeacherSidebar() {
                 isActive={pathname.startsWith(href)}
                 tooltip={{ children: label }}
               >
-                <Link href={href}>
+                <LinkActual href={href}>
                   <Icon />
                   <span>{label}</span>
-                </Link>
+                </LinkActual>
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
