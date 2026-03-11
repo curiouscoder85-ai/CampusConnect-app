@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { CourseCard } from '@/components/course-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PlusCircle } from 'lucide-react';
+import { SectionHeader } from '@/components/section-header';
 
 export default function TeacherCoursesPage() {
   const { user, isUserLoading } = useUser();
@@ -27,14 +28,14 @@ export default function TeacherCoursesPage() {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-headline text-3xl font-bold tracking-tight">My Courses</h1>
-          <p className="text-muted-foreground">Manage your courses and course content.</p>
-        </div>
+        <SectionHeader 
+          title="My Courses"
+          subtitle="Manage your courses, content, and curriculum from here."
+        />
         <Button asChild>
           <Link href="/teacher/courses/new">
             <PlusCircle className="mr-2 h-4 w-4" />
-            Create New Course
+            Create Course
           </Link>
         </Button>
       </div>
