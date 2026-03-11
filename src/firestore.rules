@@ -121,14 +121,16 @@ service cloud.firestore {
     
     // This allows collection group queries on feedback
     match /{path=**}/feedback/{feedbackId} {
-       allow list: if isRole('admin') || (isRole('teacher') && resource.data.teacherId == request.auth.uid);
+       allow list: if isSignedIn() && (resource.data.teacherId == request.auth.uid || isRole('admin'));
     }
 
     // This allows collection group queries on submissions
     match /{path=**}/submissions/{submissionId} {
-       allow list: if isRole('admin') 
-                    || (isRole('teacher') && resource.data.teacherId == request.auth.uid) 
-                    || (isRole('student') && resource.data.userId == request.auth.uid);
+       allow list: if isSignedIn() && (
+                    resource.data.userId == request.auth.uid 
+                    || resource.data.teacherId == request.auth.uid 
+                    || isRole('admin')
+                  );
     }
   }
 }
