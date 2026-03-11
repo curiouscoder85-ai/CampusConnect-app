@@ -126,9 +126,8 @@ export default function TeacherFeedbackPage() {
                 <CardContent className="prose prose-sm max-w-none">
                   <p>{summary.areasForImprovement}</p>
                 </CardContent>
-              </Card>
-            </>
-          ) : (
+              </>
+            ) : (
             <div className="flex flex-col items-center justify-center py-20 text-center border-2 border-dashed rounded-lg">
               <MessageSquare className="h-12 w-12 text-muted-foreground/50 mb-4" />
               <h3 className="font-semibold text-lg">No Analysis Generated</h3>
