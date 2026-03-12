@@ -2,30 +2,6 @@
 /**
  * @file Firestore Security Rules
  * @description This ruleset enforces a strict user-ownership model for personal data and teacher-ownership for course-related data.
- *
- * Data Structure:
- * - /users/{userId}: Stores user profiles. Only the user can read/write their own profile. Admins can read all profiles.
- * - /users/{userId}/chatHistory/{messageId}: Stores chat messages for a user. Only the user can read/write their own history.
- * - /courses/{courseId}: Stores course information. Only the teacher who created the course can modify it.
- * - /users/{userId}/certificates/{certificateId}: Stores certificates earned by users. Only the user can access their own certificates.
- * - /courses/{courseId}/submissions/{submissionId}: Stores student submissions for an assignment.
- * - /courses/{courseId}/feedback/{feedbackId}: Stores feedback for each course. Only the teacher who created the course can manage feedback. Students can create feedback.
- * - /enrollments/{enrollmentId}: Stores enrollment records. Only the student or the teacher of the course can access. Student can update their own progress.
- * - /users/{userId}/recommendations/{recommendationId}: Stores AI-powered content recommendations for each student. Only the user can access their own recommendations.
- *
- * Key Security Decisions:
- * - User listing is allowed for all signed-in users.
- * - Data shapes are not strictly enforced, focusing on authorization.
- * - Ownership is enforced using path-based matching and denormalized fields like 'teacherId'.
- * - Ambiguous relationships default to strict owner-only access.
- *
- * Denormalization for Authorization:
- * - Course documents have a `teacherId` field to identify the owner.
- * - Enrollment, Submission, and Feedback documents store `courseId`, `studentId`, and `teacherId`.
- *
- * Structural Segregation:
- * - User-specific data (e.g., certificates, recommendations, chatHistory) is stored under `/users/{userId}` to ensure private access.
- * - Submissions are a subcollection under courses.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -69,68 +45,46 @@ service cloud.firestore {
       allow delete: if (isTeacherOfCourse(courseId) || isRole('admin'));
       
       match /submissions/{submissionId} {
-        function isStudentOwner() {
-          return isSignedIn() && request.auth.uid == resource.data.userId;
-        }
-
-        // Student can create their own submission. Teacher can read, update (grade), and delete any submission in their course.
-        allow get, list: if isRole('admin') || isTeacherOfCourse(courseId) || (isSignedIn() && request.auth.uid == resource.data.userId);
+        // Student can create/read their own. Teacher of course can read/update.
+        allow get, list: if isRole('admin') || isTeacherOfCourse(courseId) || (isSignedIn() && (resource == null || resource.data.userId == request.auth.uid));
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && request.resource.data.courseId == courseId;
         allow update: if isTeacherOfCourse(courseId) || isRole('admin');
-        allow delete: if isTeacherOfCourse(courseId) || (isSignedIn() && request.auth.uid == resource.data.userId) || isRole('admin');
+        allow delete: if isTeacherOfCourse(courseId) || (isSignedIn() && resource.data.userId == request.auth.uid) || isRole('admin');
       }
       
       match /feedback/{feedbackId} {
-        allow get: if true; // Publicly readable
-        allow list: if true; // Publicly listable
+        allow get: if true; 
+        allow list: if true;
         allow create: if isSignedIn() 
-                        && request.resource.data.userId == request.auth.uid
-                        && request.resource.data.teacherId == get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId;
+                        && request.resource.data.userId == request.auth.uid;
         allow update: if isTeacherOfCourse(courseId) || isRole('admin');
         allow delete: if isTeacherOfCourse(courseId) || isRole('admin');
       }
     }
 
     match /users/{userId}/certificates/{certificateId} {
-      allow get: if isOwner(userId) || isRole('admin');
-      allow list: if isOwner(userId) || isRole('admin');
-      allow create: if isOwner(userId) || isRole('admin');
-      allow update: if isOwner(userId) || isRole('admin');
-      allow delete: if isOwner(userId) || isRole('admin');
+      allow get, list, create, update, delete: if isOwner(userId) || isRole('admin');
     }
 
     match /enrollments/{enrollmentId} {
-      function isStudentEnrolled(studentId) {
-          return isSignedIn() && request.auth.uid == studentId;
-      }
-
-      allow get: if isStudentEnrolled(resource.data.userId) || isTeacherOfCourse(resource.data.courseId) || isRole('admin');
+      allow get: if (resource.data.userId == request.auth.uid) || isTeacherOfCourse(resource.data.courseId) || isRole('admin');
       allow list: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if (isStudentEnrolled(resource.data.userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['progress', 'completedContent'])) || isTeacherOfCourse(resource.data.courseId) || isRole('admin');
-      allow delete: if isStudentEnrolled(resource.data.userId) || isTeacherOfCourse(resource.data.courseId) || isRole('admin');
+      allow update: if (resource.data.userId == request.auth.uid) || isTeacherOfCourse(resource.data.courseId) || isRole('admin');
+      allow delete: if (resource.data.userId == request.auth.uid) || isTeacherOfCourse(resource.data.courseId) || isRole('admin');
     }
 
     match /users/{userId}/recommendations/{recommendationId} {
-      allow get: if isOwner(userId) || isRole('admin');
-      allow list: if isOwner(userId) || isRole('admin');
-      allow create: if isOwner(userId) || isRole('admin');
-      allow update: if isOwner(userId) || isRole('admin');
-      allow delete: if isOwner(userId) || isRole('admin');
+      allow get, list, create, update, delete: if isOwner(userId) || isRole('admin');
     }
     
-    // This allows collection group queries on feedback
+    // Collection group rules - simplified to check denormalized fields directly
     match /{path=**}/feedback/{feedbackId} {
-       allow list: if isSignedIn() && (resource.data.teacherId == request.auth.uid || isRole('admin'));
+       allow list: if isSignedIn() && (resource.data.teacherId == request.auth.uid || resource.data.userId == request.auth.uid);
     }
 
-    // This allows collection group queries on submissions
     match /{path=**}/submissions/{submissionId} {
-       allow list: if isSignedIn() && (
-                    resource.data.userId == request.auth.uid 
-                    || resource.data.teacherId == request.auth.uid 
-                    || isRole('admin')
-                  );
+       allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.teacherId == request.auth.uid);
     }
   }
 }

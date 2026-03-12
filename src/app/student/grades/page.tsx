@@ -2,55 +2,87 @@
 
 import * as React from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, collectionGroup } from 'firebase/firestore';
+import { collection, query, where, getDocs, collectionGroup } from 'firebase/firestore';
 import type { Submission, Course, Enrollment } from '@/lib/types';
 import { SubmissionsTable } from './_components/submissions-table';
 import { SectionHeader } from '@/components/section-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ClipboardCheck, Star, Award } from 'lucide-react';
+import { ClipboardCheck, Star, Award, Loader2 } from 'lucide-react';
 
 export default function StudentGradesPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
+  const [submissions, setSubmissions] = React.useState<Submission[]>([]);
+  const [isSubmissionsLoading, setIsSubmissionsLoading] = React.useState(true);
 
-  // 1. Fetch all of the user's submissions across all courses using collectionGroup.
-  const submissionsQuery = useMemoFirebase(
-    () => {
-      if (isUserLoading || !user?.id) return null;
-      return query(
-        collectionGroup(firestore, 'submissions'),
-        where('userId', '==', user.id)
-      );
-    },
-    [firestore, user?.id, isUserLoading]
+  // 1. Fetch the user's enrollments first. This is fast and reliable.
+  const enrollmentsQuery = useMemoFirebase(
+    () => (user ? query(collection(firestore, 'enrollments'), where('userId', '==', user.id)) : null),
+    [firestore, user?.id]
   );
-  const { 
-    data: submissions, 
-    isLoading: submissionsLoading 
-  } = useCollection<Submission>(submissionsQuery);
+  const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
 
-  // 2. Extract unique course IDs from the submissions to fetch course details.
+  // 2. Fetch all submissions for the enrolled courses.
+  // Instead of collectionGroup, we fetch from the subcollections we know the user is part of.
+  React.useEffect(() => {
+    async function fetchSubmissions() {
+      if (!user || !enrollments || enrollments.length === 0) {
+        setSubmissions([]);
+        setIsSubmissionsLoading(false);
+        return;
+      }
+
+      setIsSubmissionsLoading(true);
+      try {
+        const allSubmissions: Submission[] = [];
+        
+        // Fetch submissions for each enrolled course.
+        // This is safe because students typically enroll in a limited number of courses.
+        const promises = enrollments.map(async (enrollment) => {
+          const subsRef = collection(firestore, `courses/${enrollment.courseId}/submissions`);
+          const q = query(subsRef, where('userId', '==', user.id));
+          const snapshot = await getDocs(q);
+          return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
+        });
+
+        const results = await Promise.all(promises);
+        results.forEach(subs => allSubmissions.push(...subs));
+        
+        setSubmissions(allSubmissions);
+      } catch (error) {
+        console.error("Error fetching submissions:", error);
+      } finally {
+        setIsSubmissionsLoading(false);
+      }
+    }
+
+    if (!enrollmentsLoading) {
+      fetchSubmissions();
+    }
+  }, [user, enrollments, enrollmentsLoading, firestore]);
+
+  // 3. Extract unique course IDs from the enrollments to fetch course details.
   const courseIds = React.useMemo(() => {
-    if (!submissions) return [];
-    return [...new Set(submissions.map(s => s.courseId))];
-  }, [submissions]);
+    if (!enrollments) return [];
+    return enrollments.map(e => e.courseId);
+  }, [enrollments]);
 
-  // 3. Fetch course data for the submissions found.
+  // 4. Fetch course data for the submissions found.
   const coursesQuery = useMemoFirebase(() => {
     if (courseIds.length === 0) return null;
-    return query(collection(firestore, 'courses'), where('__name__', 'in', courseIds));
+    // Limit to first 30 courses due to Firestore 'in' query limits
+    return query(collection(firestore, 'courses'), where('__name__', 'in', courseIds.slice(0, 30)));
   }, [firestore, courseIds]);
   const { data: courses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
 
-  // 4. Create a map of courses for easy lookup in the table.
+  // 5. Create a map of courses for easy lookup in the table.
   const coursesMap = React.useMemo(() => {
     if (!courses) return new Map();
     return new Map(courses.map(c => [c.id, c]));
   }, [courses]);
 
-  // 5. Sort submissions by date (newest first).
+  // 6. Sort submissions by date (newest first).
   const sortedSubmissions = React.useMemo(() => {
-    if (!submissions) return [];
     return [...submissions].sort((a, b) => {
       const dateA = a.submittedAt?.seconds || 0;
       const dateB = b.submittedAt?.seconds || 0;
@@ -59,7 +91,6 @@ export default function StudentGradesPage() {
   }, [submissions]);
 
   const stats = React.useMemo(() => {
-    if (!submissions) return { average: 0, total: 0, pending: 0 };
     const graded = submissions.filter(s => s.grade !== null);
     const average = graded.length > 0 
       ? Math.round(graded.reduce((acc, s) => acc + (s.grade || 0), 0) / graded.length) 
@@ -71,7 +102,7 @@ export default function StudentGradesPage() {
     };
   }, [submissions]);
 
-  const finalIsLoading = isUserLoading || submissionsLoading || (courseIds.length > 0 && coursesLoading);
+  const finalIsLoading = isUserLoading || enrollmentsLoading || isSubmissionsLoading || (courseIds.length > 0 && coursesLoading);
 
   return (
     <div className="flex flex-col gap-8">
@@ -86,7 +117,7 @@ export default function StudentGradesPage() {
             <CardDescription className="text-xs uppercase tracking-wider font-semibold text-primary">Average Grade</CardDescription>
             <CardTitle className="text-3xl font-bold flex items-center gap-2">
               <Star className="h-6 w-6 text-amber-400 fill-amber-400" />
-              {stats.average}%
+              {finalIsLoading ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /> : `${stats.average}%`}
             </CardTitle>
           </CardHeader>
         </Card>
@@ -95,7 +126,7 @@ export default function StudentGradesPage() {
             <CardDescription className="text-xs uppercase tracking-wider font-semibold">Total Submissions</CardDescription>
             <CardTitle className="text-3xl font-bold flex items-center gap-2">
               <ClipboardCheck className="h-6 w-6 text-muted-foreground" />
-              {stats.total}
+              {finalIsLoading ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /> : stats.total}
             </CardTitle>
           </CardHeader>
         </Card>
@@ -104,7 +135,7 @@ export default function StudentGradesPage() {
             <CardDescription className="text-xs uppercase tracking-wider font-semibold">Pending Review</CardDescription>
             <CardTitle className="text-3xl font-bold flex items-center gap-2">
               <Award className="h-6 w-6 text-muted-foreground" />
-              {stats.pending}
+              {finalIsLoading ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /> : stats.pending}
             </CardTitle>
           </CardHeader>
         </Card>
