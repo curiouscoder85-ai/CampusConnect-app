@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, collectionGroup } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import type { Course, Enrollment, Submission } from '@/lib/types';
 import { DashboardStatCard } from '@/components/dashboard-stat-card';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,41 +14,58 @@ import { SectionHeader } from '@/components/section-header';
 export default function TeacherDashboardPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const [stats, setStats] = React.useState({
+    totalCourses: 0,
+    totalStudents: 0,
+    pendingGrades: 0
+  });
+  const [isStatsLoading, setIsStatsLoading] = React.useState(true);
 
-  // 1. Fetch teacher's courses
   const coursesQuery = useMemoFirebase(
     () => (user ? query(collection(firestore, 'courses'), where('teacherId', '==', user.id)) : null),
     [firestore, user?.id]
   );
   const { data: courses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
 
-  // 2. Fetch enrollments for teacher's courses to count unique students
-  const enrollmentsQuery = useMemoFirebase(
-    () => (user ? query(collection(firestore, 'enrollments'), where('teacherId', '==', user.id)) : null),
-    [firestore, user?.id]
-  );
-  const { data: enrollments, isLoading: enrollmentsLoading } = useCollection<Enrollment>(enrollmentsQuery);
+  React.useEffect(() => {
+    async function fetchStats() {
+      if (!user || !courses) return;
+      
+      setIsStatsLoading(true);
+      try {
+        const enrollmentsQuery = query(collection(firestore, 'enrollments'), where('teacherId', '==', user.id));
+        const enrollmentsSnap = await getDocs(enrollmentsQuery);
+        const uniqueStudents = new Set(enrollmentsSnap.docs.map(doc => doc.data().userId)).size;
 
-  // 3. Fetch pending submissions across all teacher's courses
-  const submissionsQuery = useMemoFirebase(
-    () => (user ? query(collectionGroup(firestore, 'submissions'), where('teacherId', '==', user.id), where('grade', '==', null)) : null),
-    [firestore, user?.id]
-  );
-  const { data: pendingSubmissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
+        let pendingCount = 0;
+        const subPromises = courses.map(async (course) => {
+          const subsRef = collection(firestore, `courses/${course.id}/submissions`);
+          const q = query(subsRef, where('grade', '==', null));
+          const snap = await getDocs(q);
+          return snap.size;
+        });
 
-  const stats = React.useMemo(() => {
-    const totalCourses = courses?.length ?? 0;
-    const totalStudents = new Set(enrollments?.map(e => e.userId)).size;
-    const pendingGrades = pendingSubmissions?.length ?? 0;
-    
-    return {
-      totalCourses,
-      totalStudents,
-      pendingGrades
-    };
-  }, [courses, enrollments, pendingSubmissions]);
+        const counts = await Promise.all(subPromises);
+        pendingCount = counts.reduce((a, b) => a + b, 0);
 
-  const isLoading = isUserLoading || coursesLoading || enrollmentsLoading || submissionsLoading;
+        setStats({
+          totalCourses: courses.length,
+          totalStudents: uniqueStudents,
+          pendingGrades: pendingCount
+        });
+      } catch (error) {
+        console.error("Error fetching teacher stats:", error);
+      } finally {
+        setIsStatsLoading(false);
+      }
+    }
+
+    if (!coursesLoading && courses) {
+      fetchStats();
+    }
+  }, [user, courses, coursesLoading, firestore]);
+
+  const isLoading = isUserLoading || coursesLoading || isStatsLoading;
 
   return (
     <div className="flex flex-col gap-8">
@@ -115,7 +132,7 @@ export default function TeacherDashboardPage() {
             <CardDescription>Status overview of your current curriculum.</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
+            {coursesLoading ? (
               <div className="space-y-2">
                 <div className="h-4 w-full animate-pulse rounded bg-muted" />
                 <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />

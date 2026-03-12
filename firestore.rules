@@ -45,8 +45,14 @@ service cloud.firestore {
       allow delete: if (isTeacherOfCourse(courseId) || isRole('admin'));
       
       match /submissions/{submissionId} {
-        // Student can create/read their own. Teacher of course can read/update.
-        allow get, list: if isRole('admin') || isTeacherOfCourse(courseId) || (isSignedIn() && (resource == null || resource.data.userId == request.auth.uid));
+        // Simple, efficient rules for subcollections.
+        // Reading: Permitted if teacher of course, student of submission, or admin.
+        allow get, list: if isSignedIn() && (
+          isTeacherOfCourse(courseId) || 
+          (resource != null && resource.data.userId == request.auth.uid) ||
+          isRole('admin')
+        );
+        
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && request.resource.data.courseId == courseId;
         allow update: if isTeacherOfCourse(courseId) || isRole('admin');
         allow delete: if isTeacherOfCourse(courseId) || (isSignedIn() && resource.data.userId == request.auth.uid) || isRole('admin');
@@ -55,8 +61,7 @@ service cloud.firestore {
       match /feedback/{feedbackId} {
         allow get: if true; 
         allow list: if true;
-        allow create: if isSignedIn() 
-                        && request.resource.data.userId == request.auth.uid;
+        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
         allow update: if isTeacherOfCourse(courseId) || isRole('admin');
         allow delete: if isTeacherOfCourse(courseId) || isRole('admin');
       }
@@ -67,24 +72,24 @@ service cloud.firestore {
     }
 
     match /enrollments/{enrollmentId} {
-      allow get: if (resource.data.userId == request.auth.uid) || isTeacherOfCourse(resource.data.courseId) || isRole('admin');
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.teacherId == request.auth.uid || isRole('admin'));
       allow list: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if (resource.data.userId == request.auth.uid) || isTeacherOfCourse(resource.data.courseId) || isRole('admin');
-      allow delete: if (resource.data.userId == request.auth.uid) || isTeacherOfCourse(resource.data.courseId) || isRole('admin');
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.teacherId == request.auth.uid || isRole('admin'));
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.teacherId == request.auth.uid || isRole('admin'));
     }
 
     match /users/{userId}/recommendations/{recommendationId} {
       allow get, list, create, update, delete: if isOwner(userId) || isRole('admin');
     }
     
-    // Collection group rules - simplified to check denormalized fields directly
+    // Collection group rules - relies on denormalized IDs for static proof.
     match /{path=**}/feedback/{feedbackId} {
-       allow list: if isSignedIn() && (resource.data.teacherId == request.auth.uid || resource.data.userId == request.auth.uid);
+       allow list: if isSignedIn() && (resource.data.teacherId == request.auth.uid || resource.data.userId == request.auth.uid || isRole('admin'));
     }
 
     match /{path=**}/submissions/{submissionId} {
-       allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.teacherId == request.auth.uid);
+       allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.teacherId == request.auth.uid || isRole('admin'));
     }
   }
 }
