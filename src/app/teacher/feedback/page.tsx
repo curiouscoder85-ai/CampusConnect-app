@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, collectionGroup } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import type { Course, Feedback } from '@/lib/types';
 import { SectionHeader } from '@/components/section-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,10 +26,13 @@ export default function TeacherFeedbackPage() {
   );
   const { data: courses, isLoading: coursesLoading } = useCollection<Course>(coursesQuery);
 
-  // 2. Fetch feedback for the selected course
+  // 2. Fetch feedback for the selected course with teacherId filter for security rule compliance
   const feedbackQuery = useMemoFirebase(
-    () => (selectedCourseId ? query(collection(firestore, `courses/${selectedCourseId}/feedback`)) : null),
-    [firestore, selectedCourseId]
+    () => (selectedCourseId && user ? query(
+      collection(firestore, `courses/${selectedCourseId}/feedback`),
+      where('teacherId', '==', user.id)
+    ) : null),
+    [firestore, selectedCourseId, user?.id]
   );
   const { data: feedback, isLoading: feedbackLoading } = useCollection<Feedback>(feedbackQuery);
 
@@ -50,8 +53,6 @@ export default function TeacherFeedbackPage() {
     setSummary(result);
     setIsSummarizing(false);
   };
-
-  const selectedCourse = courses?.find(c => c.id === selectedCourseId);
 
   return (
     <div className="flex flex-col gap-8">
@@ -111,7 +112,7 @@ export default function TeacherFeedbackPage() {
                     Student Sentiment Summary
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="prose prose-sm max-w-none">
+                <CardContent className="prose prose-sm max-w-none text-muted-foreground leading-relaxed">
                   <p>{summary.summary}</p>
                 </CardContent>
               </Card>
@@ -123,13 +124,13 @@ export default function TeacherFeedbackPage() {
                     Key Areas for Improvement
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="prose prose-sm max-w-none">
+                <CardContent className="prose prose-sm max-w-none text-muted-foreground leading-relaxed">
                   <p>{summary.areasForImprovement}</p>
                 </CardContent>
               </Card>
             </>
           ) : (
-            <div className="flex flex-col items-center justify-center py-20 text-center border-2 border-dashed rounded-lg">
+            <div className="flex flex-col items-center justify-center py-20 text-center border-2 border-dashed rounded-lg bg-muted/30">
               <MessageSquare className="h-12 w-12 text-muted-foreground/50 mb-4" />
               <h3 className="font-semibold text-lg">No Analysis Generated</h3>
               <p className="text-sm text-muted-foreground mt-1 max-w-xs">

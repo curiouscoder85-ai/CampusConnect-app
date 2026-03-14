@@ -52,7 +52,8 @@ service cloud.firestore {
         // Students can read/update their own, teachers can read/update their course's
         allow read: if isSignedIn() && (
           resource.data.userId == request.auth.uid || 
-          resource.data.teacherId == request.auth.uid
+          resource.data.teacherId == request.auth.uid ||
+          isRole('admin')
         );
         
         allow create: if isSignedIn() && 
@@ -88,7 +89,8 @@ service cloud.firestore {
     match /enrollments/{enrollmentId} {
       allow list: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
-        resource.data.teacherId == request.auth.uid
+        resource.data.teacherId == request.auth.uid ||
+        isRole('admin')
       );
       allow get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
@@ -111,18 +113,20 @@ service cloud.firestore {
       allow get, list, create, update, delete: if isOwner(userId) || isRole('admin');
     }
     
-    // Collection group rules. 
+    // Collection group rules for optimized global fetching.
     match /{path=**}/feedback/{feedbackId} {
        allow list: if isSignedIn() && (
          resource.data.teacherId == request.auth.uid || 
-         resource.data.userId == request.auth.uid
+         resource.data.userId == request.auth.uid ||
+         isRole('admin')
        );
     }
 
     match /{path=**}/submissions/{submissionId} {
        allow list: if isSignedIn() && (
          resource.data.teacherId == request.auth.uid || 
-         resource.data.userId == request.auth.uid
+         resource.data.userId == request.auth.uid ||
+         isRole('admin')
        );
     }
   }
