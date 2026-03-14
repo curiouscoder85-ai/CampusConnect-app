@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -51,23 +50,23 @@ function SubmissionItem({ submission, course, isLoading }: SubmissionItemProps) 
       <TableCell>
         {isLoading ? <Skeleton className="h-4 w-32" /> : (
             <div>
-                 <div className="font-medium">{assignmentTitle || 'Unknown Assignment'}</div>
-                 <div className="text-sm text-muted-foreground">{course?.title || 'Unknown Course'}</div>
+                 <div className="font-medium text-sm">{assignmentTitle || 'Unknown Assignment'}</div>
+                 <div className="text-xs text-muted-foreground">{course?.title || 'Unknown Course'}</div>
             </div>
         )}
       </TableCell>
-      <TableCell className="text-muted-foreground">{formattedDate}</TableCell>
+      <TableCell className="text-muted-foreground text-xs">{formattedDate}</TableCell>
       <TableCell className="text-center">
-        {submission.uploading ? (
-            <Badge variant="secondary">Uploading...</Badge>
-        ) : submission.fileUrl ? (
-            <Button variant="outline" size="icon" asChild>
+        {submission.fileUrl ? (
+            <Button variant="outline" size="icon" asChild className="h-8 w-8">
                 <Link href={submission.fileUrl} target="_blank" rel="noopener noreferrer">
                     <Download className="h-4 w-4"/>
                 </Link>
             </Button>
+        ) : submission.uploading ? (
+            <Badge variant="secondary" className="text-[10px]">Uploading...</Badge>
         ) : (
-            <span className="text-xs text-muted-foreground italic">No File</span>
+            <span className="text-[10px] text-muted-foreground italic">No File</span>
         )}
       </TableCell>
       <TableCell className="text-right">

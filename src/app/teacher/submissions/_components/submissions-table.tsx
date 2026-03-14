@@ -13,11 +13,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
-import { Download, Edit } from 'lucide-react';
+import { Download, Edit, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { GradeSubmissionDialog } from './grade-submission-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const getInitials = (name: string) => {
   if (!name) return '??';
@@ -45,9 +46,23 @@ function SubmissionItem({ submission, course, student, isLoading, onGradeClick }
     <TableRow>
       <TableCell>
         {isLoading ? <Skeleton className="h-4 w-32" /> : (
-            <div>
-                 <div className="font-medium">{submission.assignmentTitle || 'Unknown Assignment'}</div>
-                 <div className="text-sm text-muted-foreground">{course?.title || 'Unknown Course'}</div>
+            <div className="flex flex-col">
+                 <div className="font-medium flex items-center gap-2">
+                    {submission.assignmentTitle || 'Unknown Assignment'}
+                    {submission.comment && (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <MessageSquare className="h-3 w-3 text-muted-foreground cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                    <p className="text-xs">{submission.comment}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    )}
+                 </div>
+                 <div className="text-xs text-muted-foreground">{course?.title || 'Unknown Course'}</div>
             </div>
         )}
       </TableCell>
@@ -63,34 +78,34 @@ function SubmissionItem({ submission, course, student, isLoading, onGradeClick }
               <AvatarImage src={student.avatar} alt={student.name} />
               <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
             </Avatar>
-            <span className="font-medium">{student.name}</span>
+            <span className="font-medium text-sm">{student.name}</span>
           </div>
         ) : (
-          <span className="text-muted-foreground">Unknown Student</span>
+          <span className="text-muted-foreground text-sm">Unknown Student</span>
         )}
       </TableCell>
-      <TableCell className="text-muted-foreground">{formattedDate}</TableCell>
+      <TableCell className="text-muted-foreground text-xs">{formattedDate}</TableCell>
       <TableCell>
-        {submission.uploading ? (
-            <Badge variant="secondary">Uploading...</Badge>
-        ) : submission.fileUrl ? (
-            <Button variant="outline" size="sm" asChild>
+        {submission.fileUrl ? (
+            <Button variant="outline" size="sm" asChild className="h-8">
                 <Link href={submission.fileUrl} target="_blank" rel="noopener noreferrer">
-                    <Download className="mr-2 h-4 w-4"/> View File
+                    <Download className="mr-2 h-3.5 w-3.5"/> View File
                 </Link>
             </Button>
+        ) : submission.uploading ? (
+            <Badge variant="secondary" className="animate-pulse">Uploading...</Badge>
         ) : (
             <span className="text-xs text-muted-foreground italic">No File</span>
         )}
       </TableCell>
       <TableCell className="text-right">
         {submission.grade !== null && submission.grade !== undefined ? (
-          <Button variant="outline" onClick={() => onGradeClick(submission)}>
-            <span className="font-bold text-lg">{submission.grade}</span>
+          <Button variant="outline" size="sm" onClick={() => onGradeClick(submission)} className="font-bold min-w-[3rem]">
+            {submission.grade}
           </Button>
         ) : (
-          <Button variant="default" size="sm" onClick={() => onGradeClick(submission)}>
-            <Edit className="mr-2 h-4 w-4" /> Grade
+          <Button variant="default" size="sm" onClick={() => onGradeClick(submission)} className="h-8">
+            <Edit className="mr-2 h-3.5 w-3.5" /> Grade
           </Button>
         )}
       </TableCell>
