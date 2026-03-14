@@ -42,11 +42,12 @@ export default function TeacherDashboardPage() {
         const uniqueStudents = new Set(enrollmentsSnap.docs.map(doc => doc.data().userId)).size;
 
         let pendingCount = 0;
-        // Fetch pending submissions for each course individually to avoid collectionGroup complexity and permission errors
+        // Fetch pending submissions for each course individually
         const subPromises = courses.map(async (course) => {
           try {
             const subsRef = collection(firestore, `courses/${course.id}/submissions`);
-            const q = query(subsRef, where('grade', '==', null));
+            // CRITICAL: Filter by teacherId to satisfy security rules and ensure visibility
+            const q = query(subsRef, where('grade', '==', null), where('teacherId', '==', user.id));
             const snap = await getDocs(q);
             return snap.size;
           } catch (e) {

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -42,13 +43,15 @@ export default function TeacherSubmissionsPage() {
         
         if (selectedCourseId) {
           const subsRef = collection(firestore, `courses/${selectedCourseId}/submissions`);
-          const q = query(subsRef);
+          // CRITICAL: Filter by teacherId to satisfy security rules and ensure visibility
+          const q = query(subsRef, where('teacherId', '==', user.id));
           const snap = await getDocs(q);
           results.push(...snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission)));
         } else {
           const promises = teacherCourses.map(async (course) => {
             const subsRef = collection(firestore, `courses/${course.id}/submissions`);
-            const q = query(subsRef);
+            // CRITICAL: Filter by teacherId to satisfy security rules and ensure visibility
+            const q = query(subsRef, where('teacherId', '==', user.id));
             const snap = await getDocs(q);
             return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
           });

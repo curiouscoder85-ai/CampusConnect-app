@@ -49,8 +49,8 @@ service cloud.firestore {
       );
       
       match /submissions/{submissionId} {
-        // Students can read their own, teachers can read their course's
-        allow get, list: if isSignedIn() && (
+        // Students can read/update their own, teachers can read/update their course's
+        allow read: if isSignedIn() && (
           resource.data.userId == request.auth.uid || 
           resource.data.teacherId == request.auth.uid
         );
@@ -65,14 +65,13 @@ service cloud.firestore {
         );
         
         allow delete: if isSignedIn() && (
-          resource.data.userId == request.auth.uid || 
           resource.data.teacherId == request.auth.uid || 
           isRole('admin')
         );
       }
       
       match /feedback/{feedbackId} {
-        allow get, list: if isSignedIn() && (
+        allow read: if isSignedIn() && (
           resource.data.teacherId == request.auth.uid || 
           resource.data.userId == request.auth.uid ||
           isRole('admin')
