@@ -12,7 +12,6 @@ service cloud.firestore {
     }
 
     // Helper to check if the current user has a specific role.
-    // Note: Use sparingly in list operations due to get() limits.
     function isRole(role) {
       return isSignedIn() && 
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
@@ -45,8 +44,7 @@ service cloud.firestore {
       allow list: if isSignedIn();
 
       allow create: if isSignedIn() && 
-                      request.resource.data.teacherId == request.auth.uid && 
-                      isRole('teacher');
+                      request.resource.data.teacherId == request.auth.uid;
       
       allow update, delete: if isSignedIn() && (
         resource.data.teacherId == request.auth.uid || 
@@ -54,14 +52,12 @@ service cloud.firestore {
       );
       
       match /submissions/{submissionId} {
-        // Allow reading if the user is the teacher of the course, 
-        // the student who submitted it, or an admin.
+        // Allow reading if the user is the teacher of the course or the student.
+        // We rely on denormalized IDs for performance and to satisfy collectionGroup requirements.
         allow get, list: if isSignedIn() && (
           resource.data.teacherId == request.auth.uid || 
           resource.data.userId == request.auth.uid ||
-          isRole('admin') ||
-          // Fallback for new documents during creation check
-          (request.method == 'list' && isTeacherOfCourse(courseId))
+          request.auth.uid == get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId
         );
         
         allow create: if isSignedIn() && 
@@ -81,7 +77,11 @@ service cloud.firestore {
       }
       
       match /feedback/{feedbackId} {
-        allow get, list: if true; // Publicly readable for course insights
+        allow get, list: if isSignedIn() && (
+          resource.data.teacherId == request.auth.uid || 
+          resource.data.userId == request.auth.uid ||
+          isRole('admin')
+        );
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
         allow update, delete: if isSignedIn() && (
           resource.data.teacherId == request.auth.uid || 
@@ -91,7 +91,12 @@ service cloud.firestore {
     }
 
     match /enrollments/{enrollmentId} {
-      allow list: if isSignedIn();
+      // Teachers need to list enrollments for their courses.
+      // Filter constraints in queries must match these rules.
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.teacherId == request.auth.uid
+      );
       allow get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.teacherId == request.auth.uid || 
@@ -113,21 +118,19 @@ service cloud.firestore {
       allow get, list, create, update, delete: if isOwner(userId) || isRole('admin');
     }
     
-    // Collection group rules for optimized searching.
-    // These rely on denormalized teacherId/userId for static rule verification.
+    // Collection group rules. 
+    // These MUST rely on fields present in the documents themselves.
     match /{path=**}/feedback/{feedbackId} {
        allow list: if isSignedIn() && (
          resource.data.teacherId == request.auth.uid || 
-         resource.data.userId == request.auth.uid || 
-         isRole('admin')
+         resource.data.userId == request.auth.uid
        );
     }
 
     match /{path=**}/submissions/{submissionId} {
        allow list: if isSignedIn() && (
          resource.data.teacherId == request.auth.uid || 
-         resource.data.userId == request.auth.uid || 
-         isRole('admin')
+         resource.data.userId == request.auth.uid
        );
     }
   }

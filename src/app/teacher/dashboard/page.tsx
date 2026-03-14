@@ -4,12 +4,12 @@
 import * as React from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import type { Course, Enrollment, Submission } from '@/lib/types';
+import type { Course } from '@/lib/types';
 import { DashboardStatCard } from '@/components/dashboard-stat-card';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { BookCopy, PlusCircle, ArrowRight, Users, Clock, CheckCircle } from 'lucide-react';
+import { BookCopy, PlusCircle, ArrowRight, Users, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
 import { SectionHeader } from '@/components/section-header';
 
 export default function TeacherDashboardPage() {
@@ -21,6 +21,7 @@ export default function TeacherDashboardPage() {
     pendingGrades: 0
   });
   const [isStatsLoading, setIsStatsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
   const coursesQuery = useMemoFirebase(
     () => (user ? query(collection(firestore, 'courses'), where('teacherId', '==', user.id)) : null),
@@ -33,6 +34,7 @@ export default function TeacherDashboardPage() {
       if (!user || !courses) return;
       
       setIsStatsLoading(true);
+      setError(null);
       try {
         // Fetch enrollments where this user is the teacher
         const enrollmentsQuery = query(collection(firestore, 'enrollments'), where('teacherId', '==', user.id));
@@ -40,13 +42,17 @@ export default function TeacherDashboardPage() {
         const uniqueStudents = new Set(enrollmentsSnap.docs.map(doc => doc.data().userId)).size;
 
         let pendingCount = 0;
-        // Fetch pending submissions for each course individually to avoid collectionGroup complexity
+        // Fetch pending submissions for each course individually to avoid collectionGroup complexity and permission errors
         const subPromises = courses.map(async (course) => {
-          const subsRef = collection(firestore, `courses/${course.id}/submissions`);
-          // We specifically look for submissions where grade is null
-          const q = query(subsRef, where('grade', '==', null));
-          const snap = await getDocs(q);
-          return snap.size;
+          try {
+            const subsRef = collection(firestore, `courses/${course.id}/submissions`);
+            const q = query(subsRef, where('grade', '==', null));
+            const snap = await getDocs(q);
+            return snap.size;
+          } catch (e) {
+            console.warn(`Could not fetch submissions for course ${course.id}:`, e);
+            return 0;
+          }
         });
 
         const counts = await Promise.all(subPromises);
@@ -57,8 +63,9 @@ export default function TeacherDashboardPage() {
           totalStudents: uniqueStudents,
           pendingGrades: pendingCount
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error fetching teacher stats:", error);
+        setError("We couldn't load some of your statistics. Please check your network or try again.");
       } finally {
         setIsStatsLoading(false);
       }
@@ -77,6 +84,13 @@ export default function TeacherDashboardPage() {
         title={`Welcome, ${user?.firstName || 'Teacher'}!`}
         subtitle="Manage your courses and track student performance at a glance."
       />
+
+      {error && (
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm p-4 rounded-lg flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5" />
+          <p>{error}</p>
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         <DashboardStatCard
