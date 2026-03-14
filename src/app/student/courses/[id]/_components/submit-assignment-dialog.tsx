@@ -26,11 +26,12 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth-provider';
 import { useFirestore } from '@/firebase/provider';
 import { uploadFileWithProgress } from '@/firebase/storage';
-import { collection, serverTimestamp, doc, addDoc, updateDoc } from 'firebase/firestore';
+import { collection, serverTimestamp, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { ContentItem, Course, User } from '@/lib/types';
 import { Loader2, UploadCloud, CheckCircle2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { nanoid } from 'nanoid';
 
 const formSchema = z.object({
   comment: z.string().optional(),
@@ -85,41 +86,40 @@ export function SubmitAssignmentDialog({
     setUploadProgress(0);
     setIsDone(false);
     
-    const submissionsCol = collection(firestore, `courses/${course.id}/submissions`);
-
     try {
-      // 1. Initial doc
-      const submissionDocRef = await addDoc(submissionsCol, {
+      // 1. Upload file to Storage first (Atomic approach)
+      // Generate a unique ID for the folder to prevent collisions
+      const submissionTempId = nanoid();
+      const filePath = `submissions/${course.id}/${user.id}/${assignment.id}/${submissionTempId}/${data.file.name}`;
+      
+      const fileUrl = await uploadFileWithProgress(storage, data.file, filePath, (progress) => {
+        setUploadProgress(Math.round(progress));
+      });
+
+      // 2. Create the Firestore record only AFTER upload succeeds
+      const submissionsCol = collection(firestore, `courses/${course.id}/submissions`);
+      await addDoc(submissionsCol, {
         userId: user.id,
+        studentId: user.id, // Support both naming conventions
         courseId: course.id,
         contentId: assignment.id,
         assignmentTitle: assignment.title,
         teacherId: course.teacherId,
         comment: data.comment || '',
         submittedAt: serverTimestamp(),
+        submissionDate: new Date().toISOString(), // Schema compliance
         grade: null,
-        uploading: true, 
-      });
-
-      // 2. Upload with real-time progress
-      const filePath = `submissions/${course.id}/${user.id}/${assignment.id}/${submissionDocRef.id}/${data.file.name}`;
-      const fileUrl = await uploadFileWithProgress(storage, data.file, filePath, (progress) => {
-        setUploadProgress(Math.round(progress));
-      });
-
-      // 3. Finalize
-      await updateDoc(doc(firestore, `courses/${course.id}/submissions/${submissionDocRef.id}`), {
         fileUrl,
-        uploading: false,
+        uploading: false, 
       });
 
       setIsDone(true);
       toast({
         title: 'Assignment Submitted!',
-        description: 'Your work has been received successfully.',
+        description: 'Your work has been received and is now visible to your teacher.',
       });
       
-      // Delay closing slightly so user sees the 100% / Done state
+      // Delay closing so student sees completion
       setTimeout(() => {
         onSubmissionSuccess();
         onOpenChange(false);
@@ -130,7 +130,7 @@ export function SubmitAssignmentDialog({
       toast({
         variant: 'destructive',
         title: 'Submission Failed',
-        description: error.message || 'Could not complete your submission.',
+        description: error.message || 'Could not complete your submission. Please try again.',
       });
       setIsSubmitting(false);
     }
@@ -200,7 +200,7 @@ export function SubmitAssignmentDialog({
               <div className="space-y-2 rounded-lg bg-muted/50 p-4 border border-border">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-semibold text-primary uppercase">
-                    {isDone ? 'Processing Final Step...' : 'Uploading Work...'}
+                    {uploadProgress < 100 ? 'Uploading Work...' : 'Finalizing Submission...'}
                   </span>
                   <span className="text-xs font-bold text-primary">{uploadProgress}%</span>
                 </div>
@@ -220,7 +220,7 @@ export function SubmitAssignmentDialog({
                 {isDone ? (
                   <><CheckCircle2 className="mr-2 h-4 w-4" /> Submitted!</>
                 ) : isSubmitting ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {uploadProgress}% Uploading...</>
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {uploadProgress}%</>
                 ) : (
                   'Submit Assignment'
                 )}

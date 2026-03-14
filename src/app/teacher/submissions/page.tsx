@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -14,6 +13,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { SectionHeader } from '@/components/section-header';
+import { Button } from '@/components/ui/button';
+import { RefreshCw } from 'lucide-react';
 
 export default function TeacherSubmissionsPage() {
   const firestore = useFirestore();
@@ -45,34 +46,34 @@ export default function TeacherSubmissionsPage() {
   const { data: realTimeSubmissions, isLoading: isRealTimeLoading } = useCollection<Submission>(selectedCourseSubmissionsQuery);
 
   // 3. One-time fetch for "All Courses" logic
-  React.useEffect(() => {
-    async function fetchAllSubmissions() {
-      if (!user || !teacherCourses || (selectedCourseId && selectedCourseId !== 'all')) return;
+  const fetchAllSubmissions = React.useCallback(async () => {
+    if (!user || !teacherCourses || (selectedCourseId && selectedCourseId !== 'all')) return;
 
-      setIsSubmissionsLoading(true);
-      try {
-        const results: Submission[] = [];
-        const promises = teacherCourses.map(async (course) => {
-          const subsRef = collection(firestore, `courses/${course.id}/submissions`);
-          const q = query(subsRef, where('teacherId', '==', user.id));
-          const snap = await getDocs(q);
-          return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
-        });
-        const subsArrays = await Promise.all(promises);
-        subsArrays.forEach(arr => results.push(...arr));
-        
-        setAllSubmissions(results);
-      } catch (error) {
-        console.error("Error fetching submissions:", error);
-      } finally {
-        setIsSubmissionsLoading(false);
-      }
+    setIsSubmissionsLoading(true);
+    try {
+      const results: Submission[] = [];
+      const promises = teacherCourses.map(async (course) => {
+        const subsRef = collection(firestore, `courses/${course.id}/submissions`);
+        const q = query(subsRef, where('teacherId', '==', user.id));
+        const snap = await getDocs(q);
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
+      });
+      const subsArrays = await Promise.all(promises);
+      subsArrays.forEach(arr => results.push(...arr));
+      
+      setAllSubmissions(results);
+    } catch (error) {
+      console.error("Error fetching submissions:", error);
+    } finally {
+      setIsSubmissionsLoading(false);
     }
+  }, [user, teacherCourses, selectedCourseId, firestore]);
 
+  React.useEffect(() => {
     if (!coursesLoading && teacherCourses) {
       fetchAllSubmissions();
     }
-  }, [user, teacherCourses, coursesLoading, selectedCourseId, fetchTrigger]);
+  }, [fetchAllSubmissions, coursesLoading, teacherCourses, fetchTrigger]);
 
   // Determine which submissions to display
   const displaySubmissions = React.useMemo(() => {
@@ -108,10 +109,18 @@ export default function TeacherSubmissionsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <SectionHeader 
-        title="Student Submissions"
-        subtitle="Review and grade submissions for your courses."
-      />
+      <div className="flex items-center justify-between">
+        <SectionHeader 
+          title="Student Submissions"
+          subtitle="Review and grade submissions for your courses."
+        />
+        {(selectedCourseId === 'all' || !selectedCourseId) && (
+          <Button variant="outline" size="sm" onClick={forceRefetchSubmissions} disabled={isLoading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        )}
+      </div>
       
       <div className="max-w-xs">
           <Select onValueChange={(value) => setSelectedCourseId(value)} defaultValue="all">
