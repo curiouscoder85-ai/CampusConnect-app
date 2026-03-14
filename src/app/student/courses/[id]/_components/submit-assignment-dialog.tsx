@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -26,11 +25,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth-provider';
 import { useFirestore } from '@/firebase/provider';
-import { uploadImage } from '@/firebase/storage';
+import { uploadFileWithProgress } from '@/firebase/storage';
 import { collection, serverTimestamp, doc, addDoc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { ContentItem, Course, User } from '@/lib/types';
 import { Loader2, UploadCloud } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
 const formSchema = z.object({
   comment: z.string().optional(),
@@ -60,6 +60,7 @@ export function SubmitAssignmentDialog({
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [uploadProgress, setUploadProgress] = React.useState(0);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -80,6 +81,7 @@ export function SubmitAssignmentDialog({
     }
 
     setIsSubmitting(true);
+    setUploadProgress(0);
     
     // Correctly define the path to the submissions subcollection for the course.
     const submissionsCol = collection(firestore, `courses/${course.id}/submissions`);
@@ -98,9 +100,11 @@ export function SubmitAssignmentDialog({
         uploading: true, 
       });
 
-      // Step 2: Upload the file to storage.
+      // Step 2: Upload the file to storage with progress tracking.
       const filePath = `submissions/${course.id}/${user.id}/${assignment.id}/${submissionDocRef.id}/${data.file.name}`;
-      const fileUrl = await uploadImage(storage, data.file, filePath);
+      const fileUrl = await uploadFileWithProgress(storage, data.file, filePath, (progress) => {
+        setUploadProgress(Math.round(progress));
+      });
 
       // Step 3: Update the document with the file URL and set uploading to false.
       // We await this to ensure the teacher sees the correct status immediately.
@@ -126,6 +130,7 @@ export function SubmitAssignmentDialog({
       });
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(0);
     }
   };
 
@@ -133,6 +138,7 @@ export function SubmitAssignmentDialog({
   React.useEffect(() => {
     if (!isOpen) {
       form.reset();
+      setUploadProgress(0);
     }
   }, [isOpen, form]);
 
@@ -185,6 +191,16 @@ export function SubmitAssignmentDialog({
                 </FormItem>
               )}
             />
+
+            {isSubmitting && (
+              <div className="space-y-2">
+                <Progress value={uploadProgress} className="h-2" />
+                <p className="text-[10px] text-right text-muted-foreground font-medium uppercase tracking-wider">
+                  {uploadProgress}% Uploaded
+                </p>
+              </div>
+            )}
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
                 Cancel
@@ -193,7 +209,7 @@ export function SubmitAssignmentDialog({
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Uploading...
+                    Uploading {uploadProgress}%...
                   </>
                 ) : (
                   'Submit'
