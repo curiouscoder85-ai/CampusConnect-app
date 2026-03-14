@@ -4,11 +4,6 @@ import { getDownloadURL, ref, uploadBytes, uploadBytesResumable, FirebaseStorage
 
 /**
  * Uploads an image file to Firebase Storage.
- *
- * @param storage The FirebaseStorage instance.
- * @param file The image file to upload.
- * @param path The path in Firebase Storage where the image will be stored.
- * @returns A promise that resolves with the public download URL of the uploaded image.
  */
 export async function uploadImage(storage: FirebaseStorage, file: File, path: string): Promise<string> {
   const storageRef = ref(storage, path);
@@ -19,20 +14,12 @@ export async function uploadImage(storage: FirebaseStorage, file: File, path: st
     return downloadURL;
   } catch (error) {
     console.error('Error uploading image:', error);
-    // Depending on your error handling strategy, you might want to throw the error
-    // or return a specific error message.
     throw new Error('Image upload failed');
   }
 }
 
 /**
- * Uploads a file to Firebase Storage with progress tracking.
- *
- * @param storage The FirebaseStorage instance.
- * @param file The file to upload.
- * @param path The path in Firebase Storage where the file will be stored.
- * @param onProgress Callback function that receives the upload progress percentage.
- * @returns A promise that resolves with the public download URL of the uploaded file.
+ * Uploads a file to Firebase Storage with resumable progress tracking.
  */
 export function uploadFileWithProgress(
   storage: FirebaseStorage,
@@ -47,8 +34,10 @@ export function uploadFileWithProgress(
     uploadTask.on(
       'state_changed',
       (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        onProgress(progress);
+        // Prevent division by zero if file is somehow empty or bytes not yet reported
+        const total = snapshot.totalBytes > 0 ? snapshot.totalBytes : 1;
+        const progress = (snapshot.bytesTransferred / total) * 100;
+        onProgress(Math.min(progress, 100)); // Clamp at 100
       },
       (error) => {
         console.error('Upload failed:', error);

@@ -29,7 +29,7 @@ import { uploadFileWithProgress } from '@/firebase/storage';
 import { collection, serverTimestamp, doc, addDoc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { ContentItem, Course, User } from '@/lib/types';
-import { Loader2, UploadCloud } from 'lucide-react';
+import { Loader2, UploadCloud, CheckCircle2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
 const formSchema = z.object({
@@ -61,6 +61,7 @@ export function SubmitAssignmentDialog({
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [uploadProgress, setUploadProgress] = React.useState(0);
+  const [isDone, setIsDone] = React.useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -82,75 +83,78 @@ export function SubmitAssignmentDialog({
 
     setIsSubmitting(true);
     setUploadProgress(0);
+    setIsDone(false);
     
-    // Correctly define the path to the submissions subcollection for the course.
     const submissionsCol = collection(firestore, `courses/${course.id}/submissions`);
 
     try {
-      // Step 1: Create the initial document with an 'uploading' state.
+      // 1. Initial doc
       const submissionDocRef = await addDoc(submissionsCol, {
         userId: user.id,
         courseId: course.id,
         contentId: assignment.id,
         assignmentTitle: assignment.title,
-        teacherId: course.teacherId, // IMPORTANT: Denormalize teacherId for security rules.
+        teacherId: course.teacherId,
         comment: data.comment || '',
         submittedAt: serverTimestamp(),
         grade: null,
         uploading: true, 
       });
 
-      // Step 2: Upload the file to storage with progress tracking.
+      // 2. Upload with real-time progress
       const filePath = `submissions/${course.id}/${user.id}/${assignment.id}/${submissionDocRef.id}/${data.file.name}`;
       const fileUrl = await uploadFileWithProgress(storage, data.file, filePath, (progress) => {
         setUploadProgress(Math.round(progress));
       });
 
-      // Step 3: Update the document with the file URL and set uploading to false.
-      // We await this to ensure the teacher sees the correct status immediately.
+      // 3. Finalize
       await updateDoc(doc(firestore, `courses/${course.id}/submissions/${submissionDocRef.id}`), {
         fileUrl,
         uploading: false,
       });
 
+      setIsDone(true);
       toast({
         title: 'Assignment Submitted!',
-        description: 'Your submission has been received successfully.',
+        description: 'Your work has been received successfully.',
       });
       
-      onSubmissionSuccess();
-      onOpenChange(false);
+      // Delay closing slightly so user sees the 100% / Done state
+      setTimeout(() => {
+        onSubmissionSuccess();
+        onOpenChange(false);
+      }, 1500);
 
     } catch (error: any) {
       console.error('Submission failed:', error);
       toast({
         variant: 'destructive',
         title: 'Submission Failed',
-        description: error.message || 'Could not save your assignment submission. Check permissions.',
+        description: error.message || 'Could not complete your submission.',
       });
-    } finally {
       setIsSubmitting(false);
-      setUploadProgress(0);
     }
   };
-
 
   React.useEffect(() => {
     if (!isOpen) {
       form.reset();
       setUploadProgress(0);
+      setIsSubmitting(false);
+      setIsDone(false);
     }
   }, [isOpen, form]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Submit: {assignment.title}</DialogTitle>
           <DialogDescription>
             Upload your file and add any comments for your instructor.
           </DialogDescription>
         </DialogHeader>
+        
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
@@ -193,26 +197,32 @@ export function SubmitAssignmentDialog({
             />
 
             {isSubmitting && (
-              <div className="space-y-2">
+              <div className="space-y-2 rounded-lg bg-muted/50 p-4 border border-border">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-semibold text-primary uppercase">
+                    {isDone ? 'Processing Final Step...' : 'Uploading Work...'}
+                  </span>
+                  <span className="text-xs font-bold text-primary">{uploadProgress}%</span>
+                </div>
                 <Progress value={uploadProgress} className="h-2" />
-                <p className="text-[10px] text-right text-muted-foreground font-medium uppercase tracking-wider">
-                  {uploadProgress}% Uploaded
-                </p>
               </div>
             )}
 
-            <DialogFooter>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting || !form.formState.isValid}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Uploading {uploadProgress}%...
-                  </>
+              <Button 
+                type="submit" 
+                className="min-w-[120px]"
+                disabled={isSubmitting || !form.formState.isValid || isDone}
+              >
+                {isDone ? (
+                  <><CheckCircle2 className="mr-2 h-4 w-4" /> Submitted!</>
+                ) : isSubmitting ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {uploadProgress}% Uploading...</>
                 ) : (
-                  'Submit'
+                  'Submit Assignment'
                 )}
               </Button>
             </DialogFooter>
