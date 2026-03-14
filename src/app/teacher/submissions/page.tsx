@@ -27,37 +27,39 @@ export default function TeacherSubmissionsPage() {
     setFetchTrigger(prev => prev + 1);
   };
 
+  // 1. Fetch teacher's courses
   const teacherCoursesQuery = useMemoFirebase(() => {
     if (isUserLoading || !user?.id) return null;
     return query(collection(firestore, 'courses'), where('teacherId', '==', user.id));
   }, [firestore, user?.id, isUserLoading]);
   const { data: teacherCourses, isLoading: coursesLoading } = useCollection<Course>(teacherCoursesQuery);
 
+  // 2. Real-time query for the selected course
+  const selectedCourseSubmissionsQuery = useMemoFirebase(() => {
+    if (!selectedCourseId || selectedCourseId === 'all' || !user) return null;
+    return query(
+      collection(firestore, `courses/${selectedCourseId}/submissions`),
+      where('teacherId', '==', user.id)
+    );
+  }, [firestore, selectedCourseId, user]);
+  const { data: realTimeSubmissions, isLoading: isRealTimeLoading } = useCollection<Submission>(selectedCourseSubmissionsQuery);
+
+  // 3. One-time fetch for "All Courses" logic
   React.useEffect(() => {
-    async function fetchSubmissions() {
-      if (!user || !teacherCourses) return;
+    async function fetchAllSubmissions() {
+      if (!user || !teacherCourses || (selectedCourseId && selectedCourseId !== 'all')) return;
 
       setIsSubmissionsLoading(true);
       try {
         const results: Submission[] = [];
-        
-        if (selectedCourseId) {
-          const subsRef = collection(firestore, `courses/${selectedCourseId}/submissions`);
-          // CRITICAL: Filter by teacherId to satisfy security rules and ensure visibility
+        const promises = teacherCourses.map(async (course) => {
+          const subsRef = collection(firestore, `courses/${course.id}/submissions`);
           const q = query(subsRef, where('teacherId', '==', user.id));
           const snap = await getDocs(q);
-          results.push(...snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission)));
-        } else {
-          const promises = teacherCourses.map(async (course) => {
-            const subsRef = collection(firestore, `courses/${course.id}/submissions`);
-            // CRITICAL: Filter by teacherId to satisfy security rules and ensure visibility
-            const q = query(subsRef, where('teacherId', '==', user.id));
-            const snap = await getDocs(q);
-            return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
-          });
-          const subsArrays = await Promise.all(promises);
-          subsArrays.forEach(arr => results.push(...arr));
-        }
+          return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
+        });
+        const subsArrays = await Promise.all(promises);
+        subsArrays.forEach(arr => results.push(...arr));
         
         setAllSubmissions(results);
       } catch (error) {
@@ -68,13 +70,21 @@ export default function TeacherSubmissionsPage() {
     }
 
     if (!coursesLoading && teacherCourses) {
-      fetchSubmissions();
+      fetchAllSubmissions();
     }
   }, [user, teacherCourses, coursesLoading, selectedCourseId, fetchTrigger]);
 
+  // Determine which submissions to display
+  const displaySubmissions = React.useMemo(() => {
+    if (selectedCourseId && selectedCourseId !== 'all') {
+      return realTimeSubmissions || [];
+    }
+    return allSubmissions;
+  }, [selectedCourseId, realTimeSubmissions, allSubmissions]);
+
   const studentIds = React.useMemo(() => {
-    return [...new Set(allSubmissions.map(s => s.userId))];
-  }, [allSubmissions]);
+    return [...new Set(displaySubmissions.map(s => s.userId))];
+  }, [displaySubmissions]);
 
   const studentsQuery = useMemoFirebase(() => {
     if (studentIds.length === 0) return null;
@@ -87,14 +97,14 @@ export default function TeacherSubmissionsPage() {
   const coursesMap = React.useMemo(() => new Map(teacherCourses?.map(c => [c.id, c]) || []), [teacherCourses]);
   
   const sortedSubmissions = React.useMemo(() => {
-    return allSubmissions.slice().sort((a, b) => {
+    return displaySubmissions.slice().sort((a, b) => {
        const dateA = a.submittedAt instanceof Timestamp ? a.submittedAt.toMillis() : a.submittedAt?.seconds * 1000 || 0;
        const dateB = b.submittedAt instanceof Timestamp ? b.submittedAt.toMillis() : b.submittedAt?.seconds * 1000 || 0;
        return dateB - dateA;
     });
-  }, [allSubmissions]);
+  }, [displaySubmissions]);
 
-  const isLoading = isUserLoading || coursesLoading || isSubmissionsLoading || (studentIds.length > 0 && studentsLoading);
+  const isLoading = isUserLoading || coursesLoading || (selectedCourseId === 'all' ? isSubmissionsLoading : isRealTimeLoading) || (studentIds.length > 0 && studentsLoading);
 
   return (
     <div className="flex flex-col gap-8">
@@ -104,7 +114,7 @@ export default function TeacherSubmissionsPage() {
       />
       
       <div className="max-w-xs">
-          <Select onValueChange={(value) => setSelectedCourseId(value === 'all' ? null : value)} >
+          <Select onValueChange={(value) => setSelectedCourseId(value)} defaultValue="all">
             <SelectTrigger>
                 <SelectValue placeholder="Filter by course..." />
             </SelectTrigger>
@@ -128,7 +138,7 @@ export default function TeacherSubmissionsPage() {
         coursesMap={coursesMap} 
         studentsMap={studentsMap} 
         isLoading={isLoading} 
-        selectedCourseId={selectedCourseId || 'all'}
+        selectedCourseId={selectedCourseId}
         onSubmissionsUpdate={forceRefetchSubmissions}
       />
     </div>

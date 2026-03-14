@@ -26,9 +26,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth-provider';
 import { useFirestore } from '@/firebase/provider';
-import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { uploadImage } from '@/firebase/storage';
-import { collection, serverTimestamp, doc, addDoc } from 'firebase/firestore';
+import { collection, serverTimestamp, doc, addDoc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { ContentItem, Course, User } from '@/lib/types';
 import { Loader2, UploadCloud } from 'lucide-react';
@@ -86,10 +85,6 @@ export function SubmitAssignmentDialog({
     const submissionsCol = collection(firestore, `courses/${course.id}/submissions`);
 
     try {
-      // Show immediate feedback to the user
-      onSubmissionSuccess();
-      onOpenChange(false);
-      
       // Step 1: Create the initial document with an 'uploading' state.
       const submissionDocRef = await addDoc(submissionsCol, {
         userId: user.id,
@@ -108,10 +103,19 @@ export function SubmitAssignmentDialog({
       const fileUrl = await uploadImage(storage, data.file, filePath);
 
       // Step 3: Update the document with the file URL and set uploading to false.
-      updateDocumentNonBlocking(submissionDocRef, {
+      // We await this to ensure the teacher sees the correct status immediately.
+      await updateDoc(doc(firestore, `courses/${course.id}/submissions/${submissionDocRef.id}`), {
         fileUrl,
         uploading: false,
       });
+
+      toast({
+        title: 'Assignment Submitted!',
+        description: 'Your submission has been received successfully.',
+      });
+      
+      onSubmissionSuccess();
+      onOpenChange(false);
 
     } catch (error: any) {
       console.error('Submission failed:', error);
@@ -155,6 +159,7 @@ export function SubmitAssignmentDialog({
                         type="file"
                         className="pl-10"
                         onChange={(e) => field.onChange(e.target.files?.[0])}
+                        disabled={isSubmitting}
                       />
                       <UploadCloud className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     </div>
@@ -173,6 +178,7 @@ export function SubmitAssignmentDialog({
                     <Textarea
                       placeholder="Add any notes for your instructor..."
                       {...field}
+                      disabled={isSubmitting}
                     />
                   </FormControl>
                   <FormMessage />
@@ -187,7 +193,7 @@ export function SubmitAssignmentDialog({
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Submitting...
+                    Uploading...
                   </>
                 ) : (
                   'Submit'
