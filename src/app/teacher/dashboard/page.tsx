@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -33,13 +34,16 @@ export default function TeacherDashboardPage() {
       
       setIsStatsLoading(true);
       try {
+        // Fetch enrollments where this user is the teacher
         const enrollmentsQuery = query(collection(firestore, 'enrollments'), where('teacherId', '==', user.id));
         const enrollmentsSnap = await getDocs(enrollmentsQuery);
         const uniqueStudents = new Set(enrollmentsSnap.docs.map(doc => doc.data().userId)).size;
 
         let pendingCount = 0;
+        // Fetch pending submissions for each course individually to avoid collectionGroup complexity
         const subPromises = courses.map(async (course) => {
           const subsRef = collection(firestore, `courses/${course.id}/submissions`);
+          // We specifically look for submissions where grade is null
           const q = query(subsRef, where('grade', '==', null));
           const snap = await getDocs(q);
           return snap.size;
