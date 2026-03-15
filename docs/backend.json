@@ -70,23 +70,6 @@
         "teacherId",
         "status"
       ]
-    },
-    "SystemNotification": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "System Notification",
-      "type": "object",
-      "description": "Internal notifications for administrators regarding critical events.",
-      "properties": {
-        "id": { "type": "string" },
-        "type": { "type": "string", "enum": ["account_deleted", "course_deleted", "user_left"] },
-        "message": { "type": "string" },
-        "details": { "type": "string" },
-        "userId": { "type": "string" },
-        "userName": { "type": "string" },
-        "userRole": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "type", "message", "userId", "userName", "createdAt"]
     }
   },
   "firestore": {
@@ -103,14 +86,6 @@
         "definition": {
           "entityName": "Course",
           "schema": { "$ref": "#/backend/entities/Course" }
-        }
-      },
-      {
-        "path": "/system_notifications/{notificationId}",
-        "definition": {
-          "entityName": "SystemNotification",
-          "schema": { "$ref": "#/backend/entities/SystemNotification" },
-          "description": "Admin-only notifications for tracking system-wide events like deletions."
         }
       }
     ]

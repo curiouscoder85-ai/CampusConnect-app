@@ -10,16 +10,9 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper to check if the current user is the hardcoded system admin.
-    // This is more reliable for the primary admin account as it doesn't require a document lookup.
-    function isSystemAdmin() {
-      return isSignedIn() && request.auth.token.email == 'admin@campus.com';
-    }
-
     // Helper to check if the current user has a specific role in their user document.
     function isRole(role) {
       return isSignedIn() && (
-        isSystemAdmin() || 
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role
       );
     }
@@ -109,11 +102,6 @@ service cloud.firestore {
         resource.data.teacherId == request.auth.uid || 
         isRole('admin')
       );
-    }
-
-    match /system_notifications/{notificationId} {
-      allow create: if isSignedIn();
-      allow read, list, delete: if isRole('admin');
     }
 
     match /users/{userId}/certificates/{certificateId} {

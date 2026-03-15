@@ -22,8 +22,7 @@ import { DeleteAccountAlert } from './delete-account-alert';
 import { AboutUsDialog } from './about-us-dialog';
 import { Info, Trash2 } from 'lucide-react';
 import { useFirestore } from '@/firebase/provider';
-import { collection, serverTimestamp, doc, deleteDoc } from 'firebase/firestore';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { doc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 interface SettingsDialogProps {
@@ -54,19 +53,6 @@ export function SettingsDialog({ isOpen, onOpenChange }: SettingsDialogProps) {
     if (!user) return;
 
     try {
-      // 1. Log the deletion event for admin
-      const notificationsCol = collection(firestore, 'system_notifications');
-      addDocumentNonBlocking(notificationsCol, {
-        type: 'account_deleted',
-        message: 'Account Deleted',
-        details: `User ${user.name} (${user.email}) has deleted their account and left the platform.`,
-        userId: user.id,
-        userName: user.name,
-        userRole: user.role,
-        createdAt: serverTimestamp(),
-      });
-
-      // 2. Delete user document
       const userRef = doc(firestore, 'users', user.id);
       await deleteDoc(userRef);
 
@@ -75,7 +61,6 @@ export function SettingsDialog({ isOpen, onOpenChange }: SettingsDialogProps) {
         description: 'Your account has been successfully removed.',
       });
 
-      // 3. Logout
       logout();
       setDeleteAlertOpen(false);
       onOpenChange(false);
