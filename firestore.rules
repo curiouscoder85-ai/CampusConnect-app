@@ -1,4 +1,3 @@
-
 /**
  * @file Firestore Security Rules
  * @description Optimized ruleset using denormalized fields for efficient ownership verification.
@@ -11,10 +10,18 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper to check if the current user has a specific role.
+    // Helper to check if the current user is the hardcoded system admin.
+    // This is more reliable for the primary admin account as it doesn't require a document lookup.
+    function isSystemAdmin() {
+      return isSignedIn() && request.auth.token.email == 'admin@campus.com';
+    }
+
+    // Helper to check if the current user has a specific role in their user document.
     function isRole(role) {
-      return isSignedIn() && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+      return isSignedIn() && (
+        isSystemAdmin() || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role
+      );
     }
 
     function isOwner(userId) {
@@ -26,7 +33,7 @@ service cloud.firestore {
       allow get: if isSignedIn();
       allow create: if (isOwner(userId) && request.resource.data.id == userId) || isRole('admin');
       allow update: if isOwner(userId) || isRole('admin');
-      allow delete: if isRole('admin');
+      allow delete: if isRole('admin') || isOwner(userId);
 
       match /chatHistory/{messageId} {
         allow list, get, create, update, delete: if isOwner(userId);
@@ -49,7 +56,6 @@ service cloud.firestore {
       );
       
       match /submissions/{submissionId} {
-        // Students can read/update their own, teachers can read/update their course's
         allow read: if isSignedIn() && (
           resource.data.userId == request.auth.uid || 
           resource.data.teacherId == request.auth.uid ||
@@ -103,6 +109,11 @@ service cloud.firestore {
         resource.data.teacherId == request.auth.uid || 
         isRole('admin')
       );
+    }
+
+    match /system_notifications/{notificationId} {
+      allow create: if isSignedIn();
+      allow read, list, delete: if isRole('admin');
     }
 
     match /users/{userId}/certificates/{certificateId} {
