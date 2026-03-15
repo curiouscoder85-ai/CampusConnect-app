@@ -8,7 +8,7 @@ import type { User } from '@/lib/types';
 import { UsersTable } from './_components/users-table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Search } from 'lucide-react';
+import { PlusCircle, Search, Users } from 'lucide-react';
 import { AddUserDialog } from './_components/add-user-dialog';
 import { Input } from '@/components/ui/input';
 
