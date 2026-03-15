@@ -16,9 +16,9 @@ import { Button } from '@/components/ui/button';
 import { EditUserDialog } from './edit-user-dialog';
 import { DeleteUserAlert } from './delete-user-alert';
 import { useFirestore } from '@/firebase/provider';
-import { doc } from 'firebase/firestore';
+import { doc, collection, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,6 +52,18 @@ export function UsersTable({ users, onUserAction }: UsersTableProps) {
     
     const userRef = doc(firestore, 'users', deletingUser.id);
     deleteDocumentNonBlocking(userRef);
+
+    // Create a notification for the system logs (Admin view)
+    const notificationsCol = collection(firestore, 'system_notifications');
+    addDocumentNonBlocking(notificationsCol, {
+      type: 'account_deleted',
+      message: 'Account Removed by Admin',
+      details: `Admin has permanently removed the account for ${deletingUser.name} (${deletingUser.email}).`,
+      userId: deletingUser.id,
+      userName: deletingUser.name,
+      userRole: deletingUser.role,
+      createdAt: serverTimestamp(),
+    });
 
     toast({
       title: 'User Deleted',

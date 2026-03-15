@@ -11,13 +11,14 @@ import {
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
 import Logo from '@/components/logo';
-import { LayoutDashboard, Users, BookOpen, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, MessageSquare, Bell } from 'lucide-react';
 
 const menuItems = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/courses', label: 'Courses', icon: BookOpen },
   { href: '/admin/feedback', label: 'Feedback', icon: MessageSquare },
+  { href: '/admin/notifications', label: 'Notifications', icon: Bell },
 ];
 
 export function AdminSidebar() {

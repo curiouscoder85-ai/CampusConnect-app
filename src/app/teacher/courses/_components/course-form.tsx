@@ -27,9 +27,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, doc, addDoc } from 'firebase/firestore';
+import { collection, doc, addDoc, serverTimestamp } from 'firebase/firestore';
 import type { Course } from '@/lib/types';
-import { updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { DeleteCourseAlert } from './delete-course-alert';
 import { Trash2, Eye } from 'lucide-react';
@@ -112,10 +112,22 @@ export function CourseForm({ course, onCourseCreated }: CourseFormProps) {
   };
 
   const handleDeleteCourse = () => {
-    if (!course) return;
+    if (!course || !user) return;
 
     const courseRef = doc(firestore, 'courses', course.id);
     deleteDocumentNonBlocking(courseRef);
+
+    // Create a notification for the admin
+    const notificationsCol = collection(firestore, 'system_notifications');
+    addDocumentNonBlocking(notificationsCol, {
+      type: 'course_deleted',
+      message: 'Course Deleted',
+      details: `Teacher ${user.name} deleted the course: "${course.title}".`,
+      userId: user.id,
+      userName: user.name,
+      userRole: user.role,
+      createdAt: serverTimestamp(),
+    });
 
     toast({
       title: 'Course Deleted',

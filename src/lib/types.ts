@@ -1,5 +1,3 @@
-
-
 export type User = {
   id: string;
   name: string;
@@ -88,4 +86,15 @@ export type Message = {
   text: string;
   role: 'user' | 'bot';
   createdAt?: any; // For Firestore server timestamp
+};
+
+export type SystemNotification = {
+  id: string;
+  type: 'account_deleted' | 'course_deleted' | 'user_left';
+  message: string;
+  details: string;
+  userId: string;
+  userName: string;
+  userRole: string;
+  createdAt: any;
 };

@@ -21,6 +21,10 @@ import { useAuth } from './auth-provider';
 import { DeleteAccountAlert } from './delete-account-alert';
 import { AboutUsDialog } from './about-us-dialog';
 import { Info, Trash2 } from 'lucide-react';
+import { useFirestore } from '@/firebase/provider';
+import { collection, serverTimestamp, doc, deleteDoc } from 'firebase/firestore';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useToast } from '@/hooks/use-toast';
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -28,7 +32,9 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({ isOpen, onOpenChange }: SettingsDialogProps) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const firestore = useFirestore();
+  const { toast } = useToast();
   const { appName, setAppName } = useApp();
   const [maintenanceMode, setMaintenanceMode] = React.useState(false);
   const [currentAppName, setCurrentAppName] = React.useState(appName);
@@ -44,13 +50,43 @@ export function SettingsDialog({ isOpen, onOpenChange }: SettingsDialogProps) {
     onOpenChange(false);
   };
   
-  const handleDeleteAccount = () => {
-    // In a real app, this would trigger a backend process to delete all of the user's data.
-    // For now, we'll just log to the console and log the user out.
-    console.log(`Deleting account for ${user?.email}`);
-    // logout();
-    setDeleteAlertOpen(false);
-    onOpenChange(false);
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+
+    try {
+      // 1. Log the deletion event for admin
+      const notificationsCol = collection(firestore, 'system_notifications');
+      addDocumentNonBlocking(notificationsCol, {
+        type: 'account_deleted',
+        message: 'Account Deleted',
+        details: `User ${user.name} (${user.email}) has deleted their account and left the platform.`,
+        userId: user.id,
+        userName: user.name,
+        userRole: user.role,
+        createdAt: serverTimestamp(),
+      });
+
+      // 2. Delete user document
+      const userRef = doc(firestore, 'users', user.id);
+      await deleteDoc(userRef);
+
+      toast({
+        title: 'Account Deleted',
+        description: 'Your account has been successfully removed.',
+      });
+
+      // 3. Logout
+      logout();
+      setDeleteAlertOpen(false);
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not delete your account. Please try again.',
+      });
+    }
   }
 
   return (
